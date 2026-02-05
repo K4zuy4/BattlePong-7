@@ -1,4 +1,4 @@
-from pong.game import run
+from pong.app import run
 
 
 if __name__ == "__main__":

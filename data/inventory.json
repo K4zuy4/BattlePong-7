@@ -1,0 +1,72 @@
+{
+  "paddle": [
+    {
+      "id": "pad_default",
+      "name": "Classic",
+      "sprite": null,
+      "unlocked": true
+    },
+    {
+      "id": "pad_neon",
+      "name": "Neon",
+      "sprite": "skins/paddle/paddle_neon.png",
+      "unlocked": true
+    }
+  ],
+  "ball": [
+    {
+      "id": "ball_default",
+      "name": "Plain",
+      "sprite": null,
+      "unlocked": true
+    },
+    {
+      "id": "ball_fire",
+      "name": "Fireball",
+      "sprite": "skins/ball/ball_fire.png",
+      "unlocked": false
+    },
+    {
+      "id": "ball_ice",
+      "name": "Ice Shard",
+      "sprite": "skins/ball/ball_ice.png",
+      "unlocked": false
+    }
+  ],
+  "background": [
+    {
+      "id": "bg_dark",
+      "name": "Dark Grid",
+      "sprite": null,
+      "unlocked": true
+    },
+    {
+      "id": "bg_neon",
+      "name": "Neon City",
+      "sprite": "skins/background/bg_neon.png",
+      "unlocked": false
+    }
+  ],
+  "trail": [
+    {
+      "id": "trail_none",
+      "name": "None",
+      "data": null,
+      "unlocked": true
+    },
+    {
+      "id": "trail_smoke",
+      "name": "Smoke",
+      "data": "smoke",
+      "unlocked": false
+    }
+  ],
+  "animation": [
+    {
+      "id": "anim_none",
+      "name": "None",
+      "data": null,
+      "unlocked": true
+    }
+  ]
+}

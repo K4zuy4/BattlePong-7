@@ -1,0 +1,17 @@
+{
+  "categories": [
+    {
+      "name": "Balls",
+      "items": [
+        {"id": "ball_fire", "name": "Fireball", "price": 500, "rarity": "rare", "desc": "Flame skin", "icon": "skins/ball/ball_fire.png"},
+        {"id": "ball_ice", "name": "Ice Shard", "price": 450, "rarity": "uncommon", "desc": "Cool blue core", "icon": "skins/ball/ball_ice.png"}
+      ]
+    },
+    {
+      "name": "Paddles",
+      "items": [
+        {"id": "pad_neon", "name": "Neon Blade", "price": 600, "rarity": "epic", "desc": "Glow stick", "icon": "skins/paddle/paddle_neon.png"}
+      ]
+    }
+  ]
+}

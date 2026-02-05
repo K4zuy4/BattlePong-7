@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from dataclasses import dataclass
-from typing import Callable, DefaultDict, Generic, TypeVar
+from typing import Any, Callable, DefaultDict, Generic, TypeVar
 
 
 class GameEvent:
@@ -28,6 +28,41 @@ class PointScored(GameEvent):
 @dataclass(frozen=True)
 class RoundReset(GameEvent):
     pass
+
+
+@dataclass(frozen=True)
+class SettingsChangeRequested(GameEvent):
+    """Ask the game to patch runtime settings."""
+
+    section: str
+    values: dict[str, object]
+
+
+@dataclass(frozen=True)
+class SettingsChanged(GameEvent):
+    """Broadcast after settings were applied."""
+
+    section: str
+    values: dict[str, object]
+
+
+@dataclass(frozen=True)
+class SpawnBallRequested(GameEvent):
+    """Ask the game to spawn more balls."""
+
+    count: int = 1
+    speed: float | None = None
+    size: int | None = None
+
+
+@dataclass(frozen=True)
+class BallSpawned(GameEvent):
+    ball_id: str
+
+
+@dataclass(frozen=True)
+class BallRemoved(GameEvent):
+    ball_id: str
 
 
 EventType = TypeVar("EventType", bound=GameEvent)

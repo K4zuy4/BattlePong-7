@@ -1,0 +1,7 @@
+{
+  "paddle": "pad_neon",
+  "ball": "ball_fire",
+  "background": "bg_dark",
+  "trail": "trail_smoke",
+  "animation": "anim_none"
+}

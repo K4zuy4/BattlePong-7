@@ -32,3 +32,4 @@ htmlcov/
 .DS_Store
 .Trash-*/
 .cache/
+tmp
