@@ -1,0 +1,1 @@
+"""Battle Pong template package."""
