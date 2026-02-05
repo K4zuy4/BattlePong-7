@@ -4,10 +4,13 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
+import logging
 
 import pygame
 
 from pong.settings import RuntimeSettings
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -37,6 +40,7 @@ class Paddle:
         display = self.settings.display
         self.y += direction * paddles.speed * self.speed_multiplier * dt
         self.y = max(0, min(display.height - paddles.height, self.y))
+        logger.debug("Paddle update", extra={"paddle": self.paddle_id, "y": self.y, "dir": direction})
 
     def draw(self, screen: pygame.Surface) -> None:
         pygame.draw.rect(screen, self.color, self.rect, border_radius=4)
@@ -61,6 +65,7 @@ class Ball:
     def update(self, dt: float) -> None:
         self.x += self.velocity_x * dt
         self.y += self.velocity_y * dt
+        logger.debug("Ball move", extra={"id": self.ball_id, "x": self.x, "y": self.y})
 
     def bounce_vertical(self) -> None:
         self.velocity_y *= -1
@@ -86,6 +91,7 @@ class Ball:
             self.x = paddle.x + paddle_settings.width
         else:
             self.x = paddle.x - ball_settings.size
+        logger.debug("Ball bounce paddle", extra={"id": self.ball_id, "paddle": paddle.paddle_id})
 
     def draw(self, screen: pygame.Surface) -> None:
         size = self.settings.ball.size

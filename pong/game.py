@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import random
+import logging
+import math
 import pygame
 
 from pong.entities import Ball, Paddle
@@ -22,6 +24,8 @@ from pong.powerups import PowerupManager
 from pong.settings import RuntimeSettings
 from pong.systems import ChaosSystem
 from pong.skins import SkinManager
+
+logger = logging.getLogger(__name__)
 
 BG = (15, 20, 32)
 FG = (230, 230, 230)
@@ -84,13 +88,18 @@ class PongGame:
         self.chaos_system = ChaosSystem(self.bus, self.settings)
 
         self.balls: list[Ball] = []
+        self.trails: dict[str, list[tuple[float, float]]] = {}
+        self.trail_particles: dict[str, list[dict]] = {}
+        self.trail_active: dict[str, bool] = {}
         self._ball_seq = 0
+        self._time = 0.0
         self._spawn_balls(self.settings.ball.count_on_reset)
 
     def _apply_display_settings(self) -> None:
         disp = self.settings.display
         self.screen = pygame.display.set_mode((disp.width, disp.height))
         pygame.display.set_caption(disp.title)
+        logger.info("Display applied", extra={"width": disp.width, "height": disp.height})
 
     def _ai_keys(self):
         class _Keys:
@@ -129,9 +138,11 @@ class PongGame:
         if event.section == "display":
             self._apply_display_settings()
         self.bus.publish(SettingsChanged(section=event.section, values=applied))
+        logger.info("Settings change requested", extra={"section": event.section, "applied": applied})
 
     def _on_spawn_request(self, event: SpawnBallRequested) -> None:
         self._spawn_balls(event.count, speed=event.speed, size=event.size)
+        logger.info("Spawn request", extra={"count": event.count, "speed": event.speed, "size": event.size})
 
     def _spawn_balls(self, count: int = 1, speed: float | None = None, size: int | None = None) -> None:
         cfg_ball = self.settings.ball
@@ -151,14 +162,158 @@ class PongGame:
             )
             self.balls.append(ball)
             self.bus.publish(BallSpawned(ball_id=ball.ball_id))
+            logger.debug("Ball spawned", extra={"ball_id": ball.ball_id, "speed": use_speed, "size": use_size})
+            self.trails[ball.ball_id] = []
+            self.trail_particles[ball.ball_id] = []
+            self.trail_active[ball.ball_id] = False
 
     def _remove_ball(self, ball: Ball) -> None:
         if ball in self.balls:
             self.balls.remove(ball)
             self.bus.publish(BallRemoved(ball_id=ball.ball_id))
+            logger.debug("Ball removed", extra={"ball_id": ball.ball_id, "remaining": len(self.balls)})
+            self.trails.pop(ball.ball_id, None)
+            self.trail_particles.pop(ball.ball_id, None)
+            self.trail_active.pop(ball.ball_id, None)
+
+    def _update_trails(self) -> None:
+        effect = self.settings.trail.effect
+        if effect == "trail_none":
+            return
+        for ball in self.balls:
+            if not self.trail_active.get(ball.ball_id, False):
+                continue
+            speed = math.hypot(ball.velocity_x, ball.velocity_y)
+            max_len = int(max(12, min(40, speed / 12)))
+            trail = self.trails.setdefault(ball.ball_id, [])
+            trail.insert(0, (ball.x, ball.y))
+            if len(trail) > max_len:
+                trail.pop()
+            self._spawn_trail_particles(ball, speed)
+        # update particles
+        for ball_id, plist in self.trail_particles.items():
+            for p in list(plist):
+                p["x"] += p["vx"]
+                p["y"] += p["vy"]
+                p["vy"] += 20 * 0.016  # light gravity
+                p["life"] -= 0.016
+                p["alpha"] = max(0, p["alpha"] - 8)
+                if p["life"] <= 0:
+                    plist.remove(p)
+
+    def _spawn_trail_particles(self, ball: Ball, speed: float) -> None:
+        effect = self.settings.trail.effect
+        if effect == "trail_none":
+            return
+        plist = self.trail_particles.setdefault(ball.ball_id, [])
+        spawn_count = 2 if speed < 250 else 4
+        for _ in range(spawn_count):
+            col = self._trail_color()
+            size = random.uniform(3, 8)
+            life = random.uniform(0.25, 0.6)
+            vx = random.uniform(-40, 40) * 0.016
+            vy = random.uniform(-30, 10) * 0.016
+            if effect == "trail_fire":
+                col = (255, random.randint(100, 160), random.randint(40, 90))
+                vy -= 0.1
+            elif effect == "trail_neon":
+                col = (random.randint(60, 120), random.randint(180, 255), 255)
+            elif effect == "trail_spark":
+                col = (255, 230, random.randint(140, 200))
+                size = random.uniform(2, 5)
+                vx *= 2
+            elif effect == "trail_pixel":
+                col = (180, 180, 255)
+                size = random.uniform(2, 4)
+                vx = 0
+                vy = 0
+            elif effect == "trail_rainbow":
+                col = self._rainbow_color(self._time + random.random())
+            elif effect == "trail_smoke":
+                col = (160, 160, 160)
+                vy = -abs(vy) * 0.5
+            particle = {
+                "x": ball.x,
+                "y": ball.y,
+                "vx": vx,
+                "vy": vy,
+                "life": life,
+                "alpha": 255,
+                "size": size,
+                "color": col,
+            }
+            plist.append(particle)
+
+    def _trail_color(self) -> tuple[int, int, int]:
+        match self.settings.trail.effect:
+            case "trail_fire":
+                return (255, 140, 80)
+            case "trail_neon":
+                return (80, 200, 255)
+            case "trail_spark":
+                return (255, 230, 160)
+            case "trail_pixel":
+                return (180, 180, 255)
+            case "trail_rainbow":
+                return self._rainbow_color(self._time)
+            case "trail_smoke":
+                return (170, 170, 170)
+            case _:
+                return (200, 200, 200)
+
+    def _rainbow_color(self, t: float) -> tuple[int, int, int]:
+        import math
+
+        freq = 1.6
+        r = int(127 * math.sin(freq * t) + 128)
+        g = int(127 * math.sin(freq * t + 2) + 128)
+        b = int(127 * math.sin(freq * t + 4) + 128)
+        return (r, g, b)
+
+    def _draw_trail_for_ball(self, ball: Ball) -> None:
+        effect = self.settings.trail.effect
+        if effect == "trail_none":
+            return
+        points = self.trails.get(ball.ball_id, [])
+        for i, (x, y) in enumerate(points):
+            alpha = max(20, 255 - i * 20)
+            size = max(3, self.settings.ball.size // 2 - i // 2)
+            surf = pygame.Surface((size * 2, size * 2), pygame.SRCALPHA)
+            if effect == "trail_fire":
+                col = (255, 140 - i * 4, 60)
+                pygame.draw.circle(surf, (*col, alpha), (size, size), size)
+            elif effect == "trail_neon":
+                glow = (80, 200, 255, alpha)
+                pygame.draw.circle(surf, glow, (size, size), size)
+                pygame.draw.circle(surf, (255, 255, 255, alpha), (size, size), max(1, size // 2))
+            elif effect == "trail_spark":
+                col = (255, 230, 160, alpha)
+                pygame.draw.line(surf, col, (0, size), (size * 2, size), width=2)
+                pygame.draw.line(surf, col, (size, 0), (size, size * 2), width=2)
+            elif effect == "trail_pixel":
+                col = (180, 180, 255, alpha)
+                pygame.draw.rect(surf, col, pygame.Rect(size // 2, size // 2, size, size))
+            elif effect == "trail_rainbow":
+                col = (*self._rainbow_color(self._time + i * 0.05), alpha)
+                pygame.draw.circle(surf, col, (size, size), size)
+            elif effect == "trail_smoke":
+                col = (160, 160, 160, alpha)
+                pygame.draw.circle(surf, col, (size, size), size)
+            else:
+                col = (*self._trail_color(), alpha)
+                pygame.draw.circle(surf, col, (size, size), size)
+            self.screen.blit(surf, (x - size, y - size))
+        # draw particles on top
+        for p in list(self.trail_particles.get(ball.ball_id, [])):
+            size = max(2, int(p["size"]))
+            surf = pygame.Surface((size * 2, size * 2), pygame.SRCALPHA)
+            color = (*p["color"][:3], int(p["alpha"]))
+            pygame.draw.circle(surf, color, (size, size), size)
+            self.screen.blit(surf, (p["x"] - size, p["y"] - size))
 
     def _on_point_scored(self, event: PointScored) -> None:
         self.score[event.scorer_id] += 1
+        logger.info("Point scored", extra={"scorer": event.scorer_id, "score": self.score})
 
     def _reset_round(self) -> None:
         pad_cfg = self.settings.paddle
@@ -168,6 +323,10 @@ class PongGame:
         self.balls.clear()
         self._spawn_balls(self.settings.ball.count_on_reset)
         self.bus.publish(RoundReset())
+        logger.debug("Round reset", extra={"score": self.score})
+        self.trails.clear()
+        self.trail_particles.clear()
+        self.trail_active.clear()
 
     def _handle_collisions(self) -> None:
         disp = self.settings.display
@@ -183,6 +342,7 @@ class PongGame:
             for paddle in (self.left_paddle, self.right_paddle):
                 if ball.rect.colliderect(paddle.rect):
                     ball.bounce_from_paddle(paddle)
+                    self.trail_active[ball.ball_id] = True
                     self.bus.publish(BallHitPaddle(paddle_id=paddle.paddle_id))
                     self.particles.spawn_burst(
                         ball.x + ball_size / 2, ball.y + ball_size / 2, color=ball.color, amount=10
@@ -235,12 +395,14 @@ class PongGame:
                 ball.update(dt)
             self.chaos_system.update(dt)
             self._handle_collisions()
+            self._update_trails()
             self.powerups.update(dt)
             self.particles.update(dt)
             if keys[pygame.K_SPACE]:
                 self.bus.publish(SpawnBallRequested(count=1))
         elif keys[pygame.K_r]:
             self._restart()
+        self._time += dt
 
     def draw(self) -> None:
         if not self.skins.draw_background(self.screen):
@@ -254,6 +416,7 @@ class PongGame:
         for ball in self.balls:
             if not self.skins.draw_ball(ball, self.screen):
                 ball.draw(self.screen)
+            self._draw_trail_for_ball(ball)
 
         self.particles.draw(self.screen)
         self.powerups.draw(self.screen)

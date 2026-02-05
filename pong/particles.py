@@ -3,12 +3,15 @@
 from __future__ import annotations
 
 import random
+import logging
 from dataclasses import dataclass
 from typing import List
 
 import pygame
 
 from pong.settings import RuntimeSettings
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -50,6 +53,7 @@ class ParticleSystem:
                     color=color,
                 )
             )
+        logger.debug("Particles spawned", extra={"count": amount, "pos": (x, y)})
 
     def update(self, dt: float) -> None:
         for p in list(self.particles):
@@ -63,4 +67,3 @@ class ParticleSystem:
             surf = pygame.Surface((p.size, p.size), pygame.SRCALPHA)
             pygame.draw.circle(surf, (*p.color, alpha), (p.size / 2, p.size / 2), p.size / 2)
             screen.blit(surf, (p.x, p.y))
-

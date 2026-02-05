@@ -5,12 +5,6 @@
       "name": "Classic",
       "sprite": null,
       "unlocked": true
-    },
-    {
-      "id": "pad_neon",
-      "name": "Neon",
-      "sprite": "skins/paddle/paddle_neon.png",
-      "unlocked": true
     }
   ],
   "ball": [
@@ -21,16 +15,25 @@
       "unlocked": true
     },
     {
-      "id": "ball_fire",
-      "name": "Fireball",
-      "sprite": "skins/ball/ball_fire.png",
-      "unlocked": false
+      "id": "ball_AI",
+      "name": "Ai",
+      "sprite": "skins/ball/AI.png",
+      "unlocked": false,
+      "price": 500
     },
     {
-      "id": "ball_ice",
-      "name": "Ice Shard",
-      "sprite": "skins/ball/ball_ice.png",
-      "unlocked": false
+      "id": "ball_Plasma",
+      "name": "Plasma",
+      "sprite": "skins/ball/Plasma.png",
+      "unlocked": false,
+      "price": 500
+    },
+    {
+      "id": "ball_Retro-Pong",
+      "name": "Retro-Pong",
+      "sprite": "skins/ball/Retro-Pong.png",
+      "unlocked": false,
+      "price": 500
     }
   ],
   "background": [
@@ -41,10 +44,32 @@
       "unlocked": true
     },
     {
-      "id": "bg_neon",
-      "name": "Neon City",
-      "sprite": "skins/background/bg_neon.png",
-      "unlocked": false
+      "id": "background_Galaxy",
+      "name": "Galaxy",
+      "sprite": "skins/background/Galaxy.png",
+      "unlocked": false,
+      "price": 500
+    },
+    {
+      "id": "background_Galaxy2",
+      "name": "Galaxy2",
+      "sprite": "skins/background/Galaxy2.png",
+      "unlocked": false,
+      "price": 500
+    },
+    {
+      "id": "background_Hole",
+      "name": "Hole",
+      "sprite": "skins/background/Hole.png",
+      "unlocked": false,
+      "price": 500
+    },
+    {
+      "id": "background_Neon",
+      "name": "Neon",
+      "sprite": "skins/background/Neon.png",
+      "unlocked": false,
+      "price": 500
     }
   ],
   "trail": [
@@ -52,13 +77,50 @@
       "id": "trail_none",
       "name": "None",
       "data": null,
-      "unlocked": true
+      "unlocked": true,
+      "price": 0
     },
     {
       "id": "trail_smoke",
       "name": "Smoke",
       "data": "smoke",
-      "unlocked": false
+      "unlocked": false,
+      "price": 300
+    },
+    {
+      "id": "trail_fire",
+      "name": "Fire",
+      "data": "fire",
+      "unlocked": false,
+      "price": 400
+    },
+    {
+      "id": "trail_neon",
+      "name": "Neon",
+      "data": "neon",
+      "unlocked": false,
+      "price": 450
+    },
+    {
+      "id": "trail_spark",
+      "name": "Spark",
+      "data": "spark",
+      "unlocked": false,
+      "price": 420
+    },
+    {
+      "id": "trail_pixel",
+      "name": "Pixel",
+      "data": "pixel",
+      "unlocked": false,
+      "price": 380
+    },
+    {
+      "id": "trail_rainbow",
+      "name": "Rainbow",
+      "data": "rainbow",
+      "unlocked": true,
+      "price": 480
     }
   ],
   "animation": [

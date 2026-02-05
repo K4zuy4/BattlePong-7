@@ -3,12 +3,15 @@
 from __future__ import annotations
 
 import os
+import logging
 from typing import Optional
 
 import pygame
 
 from pong.settings import RuntimeSettings
 from pong.events import SettingsChanged
+
+logger = logging.getLogger(__name__)
 
 
 class SkinManager:
@@ -36,6 +39,14 @@ class SkinManager:
         self.paddle_surface = self._load_surface(sprites.paddle_image)
         self.background_surface = self._load_surface(sprites.background_image)
         self._scaled_background = None
+        logger.info(
+            "Skins reloaded",
+            extra={
+                "ball": sprites.ball_image,
+                "paddle": sprites.paddle_image,
+                "background": sprites.background_image,
+            },
+        )
 
     def _on_settings_changed(self, event: SettingsChanged) -> None:
         if event.section in {"sprites", "display"}:

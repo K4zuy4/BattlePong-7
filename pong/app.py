@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import pygame
 
 from pong.events import EventBus
@@ -21,6 +22,7 @@ from pong.settings import RuntimeSettings
 
 class GameApp:
     def __init__(self) -> None:
+        self.log = logging.getLogger(__name__)
         pygame.init()
         pygame.font.init()
 
@@ -52,6 +54,7 @@ class GameApp:
         self.manager.register("settings", SettingsScene(self.manager, self.bus, self.settings, self.font, self.font_small))
 
         self.manager.set_scene("title")
+        self.log.info("GameApp initialized; starting at 'title'")
 
     def run(self) -> None:
         while self.running:
@@ -67,6 +70,7 @@ class GameApp:
             pygame.display.flip()
 
         pygame.quit()
+        self.log.info("Game loop exited")
 
 
 def run() -> None:

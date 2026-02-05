@@ -1,16 +1,96 @@
 {
   "categories": [
     {
-      "name": "Balls",
+      "name": "Ball",
       "items": [
-        {"id": "ball_fire", "name": "Fireball", "price": 500, "rarity": "rare", "desc": "Flame skin", "icon": "skins/ball/ball_fire.png"},
-        {"id": "ball_ice", "name": "Ice Shard", "price": 450, "rarity": "uncommon", "desc": "Cool blue core", "icon": "skins/ball/ball_ice.png"}
+        {
+          "id": "ball_AI",
+          "name": "Ai",
+          "price": 500,
+          "icon": "skins/ball/AI.png"
+        },
+        {
+          "id": "ball_Plasma",
+          "name": "Plasma",
+          "price": 500,
+          "icon": "skins/ball/Plasma.png"
+        },
+        {
+          "id": "ball_Retro-Pong",
+          "name": "Retro-Pong",
+          "price": 500,
+          "icon": "skins/ball/Retro-Pong.png"
+        }
       ]
     },
     {
-      "name": "Paddles",
+      "name": "Background",
       "items": [
-        {"id": "pad_neon", "name": "Neon Blade", "price": 600, "rarity": "epic", "desc": "Glow stick", "icon": "skins/paddle/paddle_neon.png"}
+        {
+          "id": "background_Galaxy",
+          "name": "Galaxy",
+          "price": 500,
+          "icon": "skins/background/Galaxy.png"
+        },
+        {
+          "id": "background_Galaxy2",
+          "name": "Galaxy2",
+          "price": 500,
+          "icon": "skins/background/Galaxy2.png"
+        },
+        {
+          "id": "background_Hole",
+          "name": "Hole",
+          "price": 500,
+          "icon": "skins/background/Hole.png"
+        },
+        {
+          "id": "background_Neon",
+          "name": "Neon",
+          "price": 500,
+          "icon": "skins/background/Neon.png"
+        }
+      ]
+    },
+    {
+      "name": "Trail",
+      "items": [
+        {
+          "id": "trail_smoke",
+          "name": "Smoke",
+          "price": 300,
+          "icon": null
+        },
+        {
+          "id": "trail_fire",
+          "name": "Fire",
+          "price": 400,
+          "icon": null
+        },
+        {
+          "id": "trail_neon",
+          "name": "Neon",
+          "price": 450,
+          "icon": null
+        },
+        {
+          "id": "trail_spark",
+          "name": "Spark",
+          "price": 420,
+          "icon": null
+        },
+        {
+          "id": "trail_pixel",
+          "name": "Pixel",
+          "price": 380,
+          "icon": null
+        },
+        {
+          "id": "trail_rainbow",
+          "name": "Rainbow",
+          "price": 480,
+          "icon": null
+        }
       ]
     }
   ]

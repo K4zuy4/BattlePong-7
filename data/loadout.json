@@ -1,7 +1,7 @@
 {
   "paddle": "pad_neon",
-  "ball": "ball_fire",
-  "background": "bg_dark",
-  "trail": "trail_smoke",
+  "ball": "ball_Retro-Pong",
+  "background": "background_Hole",
+  "trail": "trail_rainbow",
   "animation": "anim_none"
 }

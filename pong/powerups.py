@@ -8,12 +8,15 @@ from __future__ import annotations
 import random
 from dataclasses import dataclass
 from typing import Iterable
+import logging
 
 import pygame
 
 from pong.config import DISPLAY
 from pong.entities import Paddle
 from pong.events import BallHitPaddle, EventBus, PointScored
+
+logger = logging.getLogger(__name__)
 
 
 class PowerupEffect:
@@ -51,11 +54,13 @@ class SpeedBoostPowerup(PowerupEffect):
 
     def _on_hit(self, event: BallHitPaddle) -> None:
         self._timers[event.paddle_id] = self.boost_duration
+        logger.debug("SpeedBoost hit", extra={"paddle": event.paddle_id})
 
     def _on_point_scored(self, _event: PointScored) -> None:
         for paddle in (self.left, self.right):
             paddle.speed_multiplier = 1.0
             self._timers[paddle.paddle_id] = 0.0
+        logger.debug("SpeedBoost reset on score")
 
     def update(self, dt: float) -> None:
         for paddle in (self.left, self.right):

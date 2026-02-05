@@ -8,6 +8,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from typing import Any, Dict
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -53,6 +56,11 @@ class AudioSettings:
 
 
 @dataclass
+class TrailSettings:
+    effect: str = "trail_none"
+
+
+@dataclass
 class MatchSettings:
     win_score: int = 10
 
@@ -64,6 +72,7 @@ class RuntimeSettings:
     ball: BallSettings = field(default_factory=BallSettings)
     sprites: SpriteSettings = field(default_factory=SpriteSettings)
     audio: AudioSettings = field(default_factory=AudioSettings)
+    trail: TrailSettings = field(default_factory=TrailSettings)
     match: MatchSettings = field(default_factory=MatchSettings)
 
     def patch(self, section: str, **values: Any) -> Dict[str, Any]:
@@ -78,4 +87,5 @@ class RuntimeSettings:
                 raise ValueError(f"Unknown field '{key}' for section '{section}'")
             setattr(target, key, value)
             applied[key] = value
+        logger.info("Settings patched", extra={"section": section, "values": applied})
         return applied
