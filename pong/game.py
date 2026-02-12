@@ -50,6 +50,7 @@ class PongGame:
         self.clock = pygame.time.Clock()
         self.running = True
         self.bot_mode = bot_mode
+        self.disable_trails = True  # temporary switch to disable trails entirely
 
         self.bus.subscribe(PointScored, self._on_point_scored)
         self.bus.subscribe(SettingsChangeRequested, self._on_settings_change_requested)
@@ -177,6 +178,8 @@ class PongGame:
             self.trail_active.pop(ball.ball_id, None)
 
     def _update_trails(self) -> None:
+        if self.disable_trails:
+            return
         effect = self.settings.trail.effect
         if effect == "trail_none":
             return
@@ -186,7 +189,17 @@ class PongGame:
             speed = math.hypot(ball.velocity_x, ball.velocity_y)
             max_len = int(max(12, min(40, speed / 12)))
             trail = self.trails.setdefault(ball.ball_id, [])
-            trail.insert(0, (ball.x, ball.y))
+            center_x = ball.x + self.settings.ball.size / 2
+            center_y = ball.y + self.settings.ball.size / 2
+            vx, vy = ball.velocity_x, ball.velocity_y
+            if vx == 0 and vy == 0:
+                sample_x, sample_y = center_x, center_y
+            else:
+                norm = math.hypot(vx, vy)
+                back_offset = self.settings.ball.size * 0.6
+                sample_x = center_x - (vx / norm) * back_offset
+                sample_y = center_y - (vy / norm) * back_offset
+            trail.insert(0, (sample_x, sample_y))
             if len(trail) > max_len:
                 trail.pop()
             self._spawn_trail_particles(ball, speed)
@@ -200,6 +213,15 @@ class PongGame:
                 p["alpha"] = max(0, p["alpha"] - 8)
                 if p["life"] <= 0:
                     plist.remove(p)
+
+    def _clamp_ball_speed(self, ball: Ball) -> None:
+        max_speed = self.settings.ball.max_speed
+        speed = math.hypot(ball.velocity_x, ball.velocity_y)
+        if speed <= max_speed:
+            return
+        factor = max_speed / speed
+        ball.velocity_x *= factor
+        ball.velocity_y *= factor
 
     def _spawn_trail_particles(self, ball: Ball, speed: float) -> None:
         effect = self.settings.trail.effect
@@ -271,39 +293,29 @@ class PongGame:
         return (r, g, b)
 
     def _draw_trail_for_ball(self, ball: Ball) -> None:
+        if self.disable_trails:
+            return
         effect = self.settings.trail.effect
         if effect == "trail_none":
             return
         points = self.trails.get(ball.ball_id, [])
-        for i, (x, y) in enumerate(points):
-            alpha = max(20, 255 - i * 20)
-            size = max(3, self.settings.ball.size // 2 - i // 2)
-            surf = pygame.Surface((size * 2, size * 2), pygame.SRCALPHA)
-            if effect == "trail_fire":
-                col = (255, 140 - i * 4, 60)
-                pygame.draw.circle(surf, (*col, alpha), (size, size), size)
-            elif effect == "trail_neon":
-                glow = (80, 200, 255, alpha)
-                pygame.draw.circle(surf, glow, (size, size), size)
-                pygame.draw.circle(surf, (255, 255, 255, alpha), (size, size), max(1, size // 2))
-            elif effect == "trail_spark":
-                col = (255, 230, 160, alpha)
-                pygame.draw.line(surf, col, (0, size), (size * 2, size), width=2)
-                pygame.draw.line(surf, col, (size, 0), (size, size * 2), width=2)
-            elif effect == "trail_pixel":
-                col = (180, 180, 255, alpha)
-                pygame.draw.rect(surf, col, pygame.Rect(size // 2, size // 2, size, size))
-            elif effect == "trail_rainbow":
-                col = (*self._rainbow_color(self._time + i * 0.05), alpha)
-                pygame.draw.circle(surf, col, (size, size), size)
-            elif effect == "trail_smoke":
-                col = (160, 160, 160, alpha)
-                pygame.draw.circle(surf, col, (size, size), size)
-            else:
+        particles_only = effect in {
+            "trail_fire",
+            "trail_neon",
+            "trail_spark",
+            "trail_pixel",
+            "trail_rainbow",
+            "trail_smoke",
+        }
+        if not particles_only:
+            for i, (x, y) in enumerate(points):
+                alpha = max(20, 255 - i * 20)
+                size = max(3, self.settings.ball.size // 2 - i // 2)
+                surf = pygame.Surface((size * 2, size * 2), pygame.SRCALPHA)
                 col = (*self._trail_color(), alpha)
                 pygame.draw.circle(surf, col, (size, size), size)
-            self.screen.blit(surf, (x - size, y - size))
-        # draw particles on top
+                self.screen.blit(surf, (x - size, y - size))
+        # draw particles
         for p in list(self.trail_particles.get(ball.ball_id, [])):
             size = max(2, int(p["size"]))
             surf = pygame.Surface((size * 2, size * 2), pygame.SRCALPHA)
@@ -393,6 +405,7 @@ class PongGame:
             for ball in self.balls:
                 ball.rotation_angle = (ball.rotation_angle + self.settings.sprites.ball_rotation_speed * dt) % 360
                 ball.update(dt)
+                self._clamp_ball_speed(ball)
             self.chaos_system.update(dt)
             self._handle_collisions()
             self._update_trails()

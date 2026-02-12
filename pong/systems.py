@@ -14,7 +14,7 @@ from pong.settings import RuntimeSettings
 class ChaosSystem:
     """Periodically tweaks ball settings and spawns new balls."""
 
-    def __init__(self, bus, settings: RuntimeSettings, interval: float = 7.0) -> None:
+    def __init__(self, bus, settings: RuntimeSettings, interval: float = 12.0) -> None:
         self.bus = bus
         self.settings = settings
         self.interval = interval
@@ -27,7 +27,8 @@ class ChaosSystem:
         self.elapsed += dt
         if self.elapsed < self.interval:
             return
-        self.elapsed = 0.0
+        # add small jitter to avoid spam
+        self.elapsed = -random.uniform(1.5, 3.0)
 
         speed_variation = self.settings.ball.speed * random.uniform(0.85, 1.3)
         size_variation = int(max(8, min(32, self.settings.ball.size * random.uniform(0.8, 1.2))))
@@ -39,4 +40,3 @@ class ChaosSystem:
             )
         )
         self.bus.publish(SpawnBallRequested(count=1))
-

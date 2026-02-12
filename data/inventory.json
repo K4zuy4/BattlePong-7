@@ -32,7 +32,7 @@
       "id": "ball_Retro-Pong",
       "name": "Retro-Pong",
       "sprite": "skins/ball/Retro-Pong.png",
-      "unlocked": false,
+      "unlocked": true,
       "price": 500
     }
   ],
@@ -54,7 +54,7 @@
       "id": "background_Galaxy2",
       "name": "Galaxy2",
       "sprite": "skins/background/Galaxy2.png",
-      "unlocked": false,
+      "unlocked": true,
       "price": 500
     },
     {

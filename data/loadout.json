@@ -1,7 +1,7 @@
 {
-  "paddle": "pad_neon",
+  "paddle": "pad_default",
   "ball": "ball_Retro-Pong",
-  "background": "background_Hole",
+  "background": "background_Galaxy2",
   "trail": "trail_rainbow",
   "animation": "anim_none"
 }

@@ -35,6 +35,7 @@ class BallSettings:
     speed: float = 300.0
     max_bounce_angle_deg: float = 65.0
     count_on_reset: int = 1
+    max_speed: float = 380.0
 
 
 @dataclass
