@@ -16,6 +16,7 @@ class ShopScene(Scene):
         self.font = font
         self.font_small = font_small
         self.theme = theme
+        self.status_msg = ""
         self.packages = [
             {"label": "Buy 1000C for 9.999€ (Satire)", "credits": 1000},
             {"label": "Buy 5000C for 49.999€ (Satire)", "credits": 5000},
@@ -72,6 +73,9 @@ class ShopScene(Scene):
         screen.blit(credits_txt, (40, 100))
         subtitle = self.font_small.render("Kaufe Credits (es kostet nichts wirklich)", True, fg)
         screen.blit(subtitle, (40, 140))
+        if self.status_msg:
+            msg = self.font_small.render(self.status_msg, True, (255, 210, 180))
+            screen.blit(msg, (40, 180))
         for b in self.buttons:
             b.draw(screen)
 
@@ -85,6 +89,7 @@ class ShopScene(Scene):
         app.credits += pack["credits"]
         app._save_wallet()
         self.manager.app_ctx["credits"] = app.credits
+        self.status_msg = f"Granted {pack['credits']}C"
         logger.info("Credits granted", extra={"credits": app.credits, "pack": pack})
 
     def _back(self) -> None:

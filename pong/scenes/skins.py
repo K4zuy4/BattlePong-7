@@ -20,6 +20,7 @@ class SkinsScene(Scene):
         self.theme = theme
         self.focus = FocusManager()
         self.buttons = []
+        self.status_msg = ""
         self._rebuild_buttons()
 
     def _rebuild_buttons(self) -> None:
@@ -51,6 +52,7 @@ class SkinsScene(Scene):
         self._skin_list = self.manager.app_ctx.get("skin_names", []) if hasattr(self.manager, "app_ctx") else []
         self._owned = self.manager.app_ctx.get("owned_skins", set()) if hasattr(self.manager, "app_ctx") else set()
         self._selected_idx = 0
+        self.status_msg = ""
         logger.info("SkinsScene enter", extra={"skins": self._skin_list})
 
     def handle_event(self, event: pygame.event.Event) -> None:
@@ -100,6 +102,10 @@ class SkinsScene(Scene):
             c = _hex_to_rgb(col)
             pygame.draw.rect(screen, c, pygame.Rect(40 + i * 64, 160, 60, 60), border_radius=8)
 
+        if self.status_msg:
+            msg = self.font_small.render(self.status_msg, True, (255, 210, 180))
+            screen.blit(msg, (40, 240))
+
         for b in self.buttons:
             b.draw(screen)
 
@@ -110,11 +116,13 @@ class SkinsScene(Scene):
         owned = self.manager.app_ctx.get("owned_skins", set()) if hasattr(self.manager, "app_ctx") else set()
         if name not in owned:
             logger.info("Apply blocked, not owned", extra={"skin": name})
+            self.status_msg = "Not owned"
             return
         app = getattr(self.manager, "app", None)
         if app and hasattr(app, "_apply_skin"):
             app._apply_skin(name)
-        logger.info("Skin applied via scene", extra={"skin": name})
+            self.status_msg = f"Applied {name}"
+            logger.info("Skin applied via scene", extra={"skin": name})
 
     def _buy_selected(self) -> None:
         if not self._skin_list:
@@ -123,17 +131,28 @@ class SkinsScene(Scene):
         app = getattr(self.manager, "app", None)
         if not app:
             return
+        if name in app.owned_skins:
+            self.status_msg = "Already owned"
+            logger.info("Purchase skipped; already owned", extra={"skin": name})
+            return
         price = 1000 if name.lower().startswith("basic") else 2000
         if app.credits < price:
+            need = price - app.credits
+            self.status_msg = f"Need {need} more credits"
             logger.info("Not enough credits", extra={"need": price, "have": app.credits})
             return
+        before = app.credits
         app.credits -= price
         app.owned_skins.add(name)
         app._save_wallet()
         app._save_owned_skins()
         self.manager.app_ctx["owned_skins"] = app.owned_skins
         self.manager.app_ctx["credits"] = app.credits
-        logger.info("Skin purchased", extra={"skin": name, "price": price, "credits": app.credits})
+        self.status_msg = f"Bought {name} for {price}C"
+        logger.info(
+            "Skin purchased",
+            extra={"skin": name, "price": price, "credits_before": before, "credits_after": app.credits},
+        )
 
     def _back(self) -> None:
         # If opened via set_scene (stack size 1), go back to title; otherwise pop overlay
