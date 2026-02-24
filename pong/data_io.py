@@ -16,7 +16,9 @@ def load_json(path: str, default: Any) -> Any:
         return default
     try:
         with open(path, "r", encoding="utf-8") as f:
-            return json.load(f)
+            data = json.load(f)
+            logger.debug("load_json success", extra={"path": path})
+            return data
     except Exception as exc:
         logger.warning("load_json failed, returning default", extra={"path": path, "error": str(exc)})
         return default

@@ -14,6 +14,7 @@ def configure_logging(mode: Literal["info", "debug"] = "info") -> None:
         format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
     )
     logging.getLogger("pygame").setLevel(logging.WARNING)
+    logging.getLogger(__name__).info("Logging configured", extra={"mode": mode})
 
 
 def mode_from_env() -> Literal["info", "debug"]:

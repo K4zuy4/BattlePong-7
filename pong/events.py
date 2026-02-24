@@ -72,10 +72,14 @@ Listener = Callable[[GameEvent], None]
 class EventBus(Generic[EventType]):
     def __init__(self) -> None:
         self._listeners: DefaultDict[type[GameEvent], list[Listener]] = defaultdict(list)
+        import logging
+        self._log = logging.getLogger(__name__)
 
     def subscribe(self, event_cls: type[GameEvent], listener: Listener) -> None:
         self._listeners[event_cls].append(listener)
+        self._log.debug("Event subscribed", extra={"event": event_cls.__name__, "listener": listener.__name__ if hasattr(listener, '__name__') else str(listener)})
 
     def publish(self, event: GameEvent) -> None:
+        self._log.debug("Event publish", extra={"event": type(event).__name__})
         for listener in self._listeners[type(event)]:
             listener(event)

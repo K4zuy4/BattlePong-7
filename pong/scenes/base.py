@@ -1,12 +1,28 @@
 from __future__ import annotations
 
-import pygame
 import logging
+from dataclasses import dataclass
+from typing import Callable, Optional
+import pygame
+
+from .transitions import TransitionController, TransitionSpec
 
 
 class Scene:
+    """Abstract scene interface."""
+
+    def on_enter(self, payload: dict | None = None) -> None:
+        pass
+
+    def on_exit(self, payload: dict | None = None) -> None:
+        pass
+
     def handle_event(self, event: pygame.event.Event) -> None:
         raise NotImplementedError
+
+    def handle_input(self, input_state) -> None:
+        """Optional input processing (action-based) separate from raw events."""
+        pass
 
     def update(self, dt: float) -> None:
         raise NotImplementedError
@@ -14,51 +30,121 @@ class Scene:
     def draw(self, screen: pygame.Surface) -> None:
         raise NotImplementedError
 
-    def on_enter(self) -> None:
-        pass
 
-    def on_exit(self) -> None:
-        pass
+@dataclass
+class _StackItem:
+    name: str
+    scene: Scene
+    payload: dict | None = None
 
 
 class SceneManager:
+    """Scene stack with push/pop and optional transitions."""
+
     def __init__(self) -> None:
+        self._stack: list[_StackItem] = []
         self.scenes: dict[str, Scene] = {}
-        self.current: str | None = None
-        self._history: list[str] = []
         self.log = logging.getLogger(__name__)
+        self.transitions: TransitionController | None = None
+        # default spec provider can be overridden per call
+        self.transition_spec_provider: Optional[Callable[[], TransitionSpec]] = None
+
+    def attach_transitions(self, controller: TransitionController, spec_provider: Callable[[], TransitionSpec]) -> None:
+        self.transitions = controller
+        self.transition_spec_provider = spec_provider
 
     def register(self, name: str, scene: Scene) -> None:
         self.scenes[name] = scene
         self.log.debug("Scene registered", extra={"name": name})
 
-    def set_scene(self, name: str) -> None:
-        if self.current == name:
+    def set_scene(self, name: str, payload: dict | None = None) -> None:
+        if self.current_name == name:
             return
-        if self.current:
-            self.scenes[self.current].on_exit()
-            self._history.append(self.current)
-        self.current = name
-        self.scenes[name].on_enter()
-        self.log.info("Scene change", extra={"current": self.current})
+        self._navigate(lambda: self._replace_stack_with(name, payload), "set_scene", name)
 
-    def go_back(self) -> None:
-        if not self._history:
+    def push(self, name: str, payload: dict | None = None) -> None:
+        self._navigate(lambda: self._push(name, payload), "push", name)
+
+    def pop(self, payload: dict | None = None) -> None:
+        if not self._stack:
             return
-        prev = self._history.pop()
-        if self.current:
-            self.scenes[self.current].on_exit()
-        self.current = prev
-        self.scenes[self.current].on_enter()
+        if len(self._stack) == 1:
+            self.log.debug("Pop ignored; single scene on stack")
+            return
+        def apply_pop():
+            popped = self._stack.pop()
+            popped.scene.on_exit(payload)
+            self.log.info("Scene pop", extra={"popped": popped.name})
+            if self._stack:
+                self.top.scene.on_enter(payload)
+
+        if self.transitions and self.transition_spec_provider and not self.transitions.active:
+            spec = self.transition_spec_provider()
+            if spec.duration > 0:
+                self.transitions.start(spec, apply_pop)
+                self.log.info("Scene pop (transition)")
+                return
+        apply_pop()
+
+    def _navigate(self, action: Callable[[], None], kind: str, target: str) -> None:
+        """Optionally wrap navigation in a transition."""
+        if self.transitions and self.transition_spec_provider:
+            if self.transitions.active:
+                return
+            spec = self.transition_spec_provider()
+            if spec.duration > 0:
+                self.transitions.start(spec, action)
+                self.log.info("Scene %s (transition)", extra={"target": target, "kind": kind})
+                return
+        action()
+        self.log.info("Scene %s", kind, extra={"target": target})
+
+    def _push(self, name: str, payload: dict | None) -> None:
+        if name not in self.scenes:
+            raise KeyError(f"Scene '{name}' not registered")
+        if self._stack:
+            self.top.scene.on_exit({"next": name})
+        item = _StackItem(name=name, scene=self.scenes[name], payload=payload)
+        self._stack.append(item)
+        item.scene.on_enter(payload)
+
+    def _replace_stack_with(self, name: str, payload: dict | None) -> None:
+        self._pop_all()
+        self._push(name, payload)
+
+    def _pop_all(self) -> None:
+        while self._stack:
+            item = self._stack.pop()
+            item.scene.on_exit({"reason": "stack_clear"})
+
+    @property
+    def top(self) -> _StackItem:
+        return self._stack[-1]
+
+    @property
+    def current_name(self) -> str | None:
+        return self._stack[-1].name if self._stack else None
+
+    @property
+    def previous_name(self) -> str | None:
+        if len(self._stack) >= 2:
+            return self._stack[-2].name
+        return None
 
     def handle_event(self, event: pygame.event.Event) -> None:
-        if self.current:
-            self.scenes[self.current].handle_event(event)
+        if self._stack:
+            self.log.debug("Handle event", extra={"scene": self.current_name, "event": event.type})
+            self.top.scene.handle_event(event)
+
+    def handle_input(self, input_state) -> None:
+        if self._stack:
+            self.top.scene.handle_input(input_state)
 
     def update(self, dt: float) -> None:
-        if self.current:
-            self.scenes[self.current].update(dt)
+        if self._stack:
+            self.log.debug("Update scene", extra={"scene": self.current_name, "dt": dt})
+            self.top.scene.update(dt)
 
     def draw(self, screen: pygame.Surface) -> None:
-        if self.current:
-            self.scenes[self.current].draw(screen)
+        if self._stack:
+            self.top.scene.draw(screen)

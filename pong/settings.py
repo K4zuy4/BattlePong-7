@@ -81,6 +81,7 @@ class RuntimeSettings:
         target = getattr(self, section, None)
         if target is None:
             raise ValueError(f"Unknown settings section '{section}'")
+        logger.debug("Settings patch requested", extra={"section": section, "values": values})
 
         applied: Dict[str, Any] = {}
         for key, value in values.items():
