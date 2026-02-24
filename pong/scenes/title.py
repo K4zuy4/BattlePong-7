@@ -12,10 +12,11 @@ logger = logging.getLogger(__name__)
 
 
 class TitleScene(Scene):
-    def __init__(self, manager: SceneManager, screen_rect: pygame.Rect, font_big, font_small) -> None:
+    def __init__(self, manager: SceneManager, screen_rect: pygame.Rect, font_big, font_small, theme) -> None:
         self.manager = manager
         self.font_big = font_big
         self.font_small = font_small
+        self.theme = theme
         w, h = 260, 56
         spacing = 18
         start_y = screen_rect.centery - 2 * (h + spacing) / 2
@@ -33,6 +34,7 @@ class TitleScene(Scene):
             specs=specs,
             font=font_small,
             on_route=self.manager.set_scene,
+            theme=theme,
         )
         self.focus = FocusManager()
         items = [
@@ -71,11 +73,23 @@ class TitleScene(Scene):
             b.update(dt)
 
     def draw(self, screen: pygame.Surface) -> None:
-        screen.fill((10, 14, 22))
-        title = self.font_big.render("BATTLE PONG", True, (255, 200, 120))
+        palette = self.manager.app_ctx.get("palette") if hasattr(self.manager, "app_ctx") else None
+        bg = (10, 14, 22) if not palette else _hex_to_rgb(palette.background)
+        fg = (255, 200, 120) if not palette else _hex_to_rgb(palette.accent)
+        text_fg = (255, 255, 255) if not palette else _hex_to_rgb(palette.foreground)
+
+        screen.fill(bg)
+        title = self.font_big.render("BATTLE PONG", True, fg)
         screen.blit(title, (screen.get_width() // 2 - title.get_width() // 2, 100))
-        subtitle = self.font_small.render("Backbone Preview", True, (180, 200, 220))
+        subtitle = self.font_small.render("Backbone Preview", True, text_fg)
         screen.blit(subtitle, (screen.get_width() // 2 - subtitle.get_width() // 2, 160))
         for b in self.buttons:
             b.draw(screen)
         logger.debug("Title draw")
+
+
+def _hex_to_rgb(hexstr: str) -> tuple[int, int, int]:
+    hs = hexstr.lstrip("#")
+    if len(hs) == 3:
+        hs = "".join([c * 2 for c in hs])
+    return tuple(int(hs[i : i + 2], 16) for i in (0, 2, 4))

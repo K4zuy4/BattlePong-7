@@ -33,19 +33,32 @@ class PlayScene(Scene):
         self._draw_ui(screen)
 
     def _draw_background(self, screen: pygame.Surface) -> None:
-        screen.fill((12, 16, 26))
+        palette = self.manager.app_ctx.get("palette") if hasattr(self.manager, "app_ctx") else None
+        bg = (12, 16, 26) if not palette else _hex_to_rgb(palette.background)
+        screen.fill(bg)
 
     def _draw_world(self, screen: pygame.Surface) -> None:
         # Placeholder: oscillating circle to show world layer separation
         import math
 
+        palette = self.manager.app_ctx.get("palette") if hasattr(self.manager, "app_ctx") else None
+        color = (90, 140, 255) if not palette else _hex_to_rgb(palette.accent)
         cx = screen.get_width() // 2
         cy = screen.get_height() // 2
         r = 40 + int(10 * math.sin(self.time * 2))
-        pygame.draw.circle(screen, (90, 140, 255), (cx, cy), r)
+        pygame.draw.circle(screen, color, (cx, cy), r)
 
     def _draw_ui(self, screen: pygame.Surface) -> None:
-        title = self.font.render("Play Stub", True, (240, 220, 180))
+        palette = self.manager.app_ctx.get("palette") if hasattr(self.manager, "app_ctx") else None
+        fg = (240, 220, 180) if not palette else _hex_to_rgb(palette.foreground)
+        title = self.font.render("Play Stub", True, fg)
         screen.blit(title, (40, 40))
-        hint = self.font_small.render("[Esc/P] Pause", True, (200, 210, 220))
+        hint = self.font_small.render("[Esc/P] Pause", True, fg)
         screen.blit(hint, (40, 90))
+
+
+def _hex_to_rgb(hexstr: str) -> tuple[int, int, int]:
+    hs = hexstr.lstrip("#")
+    if len(hs) == 3:
+        hs = "".join([c * 2 for c in hs])
+    return tuple(int(hs[i : i + 2], 16) for i in (0, 2, 4))

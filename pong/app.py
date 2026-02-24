@@ -14,6 +14,7 @@ from pong.core.input import InputState, Action
 from pong.core.debug import DebugOverlay, DebugOverlayConfig
 from pong.skin import SkinRegistry
 from pathlib import Path
+from pong.ui.widgets import ThemeTokens, ButtonStyle
 
 
 class GameApp:
@@ -39,16 +40,18 @@ class GameApp:
 
         # game state flag
         self.in_game = False
+        self.palette = None
+        self.theme = self._build_theme_default()
 
         self.manager = SceneManager()
         self.transitions = TransitionController()
         rect = self.screen.get_rect()
-        self.manager.register("title", TitleScene(self.manager, rect, self.font_big, self.font))
-        self.manager.register("settings", SettingsScene(self.manager, self.font, self.font_small))
+        self.manager.register("title", TitleScene(self.manager, rect, self.font_big, self.font, self.theme))
+        self.manager.register("settings", SettingsScene(self.manager, self.font, self.font_small, self.theme))
         self.manager.register("play", PlayScene(self.manager, self.font, self.font_small))
-        self.manager.register("pause", PauseScene(self.manager, self.font, self.font_small))
+        self.manager.register("pause", PauseScene(self.manager, self.font, self.font_small, self.theme))
         # share app context with scenes that need global flags
-        self.manager.app_ctx = {"in_game": self.in_game}
+        self.manager.app_ctx = {"in_game": self.in_game, "palette": self.palette}
         self._configure_transitions()
         self.manager.set_scene("title")
         self.log.info("GameApp initialized; starting at 'title'")
@@ -145,7 +148,9 @@ class GameApp:
 
     def _apply_skin(self, name: str) -> None:
         manifest = self.skins.apply(name)
-        # Future: propagate palette/assets to render systems; for now log.
+        self.palette = manifest.palette
+        self._update_theme_from_palette(self.palette)
+        self.manager.app_ctx["palette"] = self.palette
         self.log.info("Skin applied", extra={"skin": manifest.name})
 
     def _update_game_flag(self) -> None:
@@ -154,6 +159,63 @@ class GameApp:
             self.in_game = True
         elif current == "title":
             self.in_game = False
+
+    def _build_theme_default(self) -> ThemeTokens:
+        return ThemeTokens(
+            variants={
+                "primary": ButtonStyle(
+                    base=(64, 78, 120),
+                    hover=(90, 112, 168),
+                    press=(52, 62, 96),
+                    border=(220, 230, 255),
+                    text=(255, 255, 255),
+                    radius=12,
+                ),
+                "ghost": ButtonStyle(
+                    base=(28, 32, 44),
+                    hover=(40, 46, 64),
+                    press=(22, 26, 36),
+                    border=(140, 160, 200),
+                    text=(220, 230, 255),
+                    radius=12,
+                ),
+            }
+        )
+
+    def _update_theme_from_palette(self, palette) -> None:
+        if palette is None:
+            return
+        primary_base = _hex_to_rgb(palette.primary)
+        accent = _hex_to_rgb(palette.accent)
+        fg = _hex_to_rgb(palette.foreground)
+        ghost_base = _hex_to_rgb(palette.background)
+        self.theme.variants["primary"] = ButtonStyle(
+            base=primary_base,
+            hover=_tint(primary_base, 1.1),
+            press=_tint(primary_base, 0.9),
+            border=_tint(fg, 1.0),
+            text=fg,
+            radius=12,
+        )
+        self.theme.variants["ghost"] = ButtonStyle(
+            base=ghost_base,
+            hover=_tint(ghost_base, 1.05),
+            press=_tint(ghost_base, 0.95),
+            border=_tint(accent, 1.0),
+            text=fg,
+            radius=12,
+        )
+
+
+def _hex_to_rgb(hexstr: str) -> tuple[int, int, int]:
+    hs = hexstr.lstrip("#")
+    if len(hs) == 3:
+        hs = "".join([c * 2 for c in hs])
+    return tuple(int(hs[i : i + 2], 16) for i in (0, 2, 4))
+
+
+def _tint(color: tuple[int, int, int], factor: float) -> tuple[int, int, int]:
+    return tuple(max(0, min(255, int(c * factor))) for c in color)
 
 
 def run() -> None:

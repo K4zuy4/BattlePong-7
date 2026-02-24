@@ -10,10 +10,11 @@ logger = logging.getLogger(__name__)
 
 
 class PauseScene(Scene):
-    def __init__(self, manager: SceneManager, font, font_small) -> None:
+    def __init__(self, manager: SceneManager, font, font_small, theme) -> None:
         self.manager = manager
         self.font = font
         self.font_small = font_small
+        self.theme = theme
         specs = [
             ButtonSpec("Resume", action=self._resume),
             ButtonSpec("Settings", action=self._open_settings),
@@ -27,6 +28,7 @@ class PauseScene(Scene):
             specs=specs,
             font=font_small,
             on_route=self.manager.set_scene,
+            theme=theme,
         )
 
     def _resume(self) -> None:

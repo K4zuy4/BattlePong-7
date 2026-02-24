@@ -10,10 +10,11 @@ logger = logging.getLogger(__name__)
 
 
 class SettingsScene(Scene):
-    def __init__(self, manager: SceneManager, font, font_small) -> None:
+    def __init__(self, manager: SceneManager, font, font_small, theme=None) -> None:
         self.manager = manager
         self.font = font
         self.font_small = font_small
+        self.theme = theme
         w, h = 200, 48
         spacing = 12
         anchor = (80, 200)
@@ -28,6 +29,7 @@ class SettingsScene(Scene):
             specs=specs,
             font=font_small,
             on_route=self.manager.set_scene,
+            theme=theme,
         )
 
     def _back(self) -> None:
