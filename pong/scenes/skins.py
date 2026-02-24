@@ -136,7 +136,11 @@ class SkinsScene(Scene):
         logger.info("Skin purchased", extra={"skin": name, "price": price, "credits": app.credits})
 
     def _back(self) -> None:
-        self.manager.pop()
+        # If opened via set_scene (stack size 1), go back to title; otherwise pop overlay
+        if self.manager.previous_name:
+            self.manager.pop()
+        else:
+            self.manager.set_scene("title")
 
 
 def _hex_to_rgb(hexstr: str) -> tuple[int, int, int]:

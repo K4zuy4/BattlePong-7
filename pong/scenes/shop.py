@@ -88,7 +88,10 @@ class ShopScene(Scene):
         logger.info("Credits granted", extra={"credits": app.credits, "pack": pack})
 
     def _back(self) -> None:
-        self.manager.pop()
+        if self.manager.previous_name:
+            self.manager.pop()
+        else:
+            self.manager.set_scene("title")
 
 
 def _hex_to_rgb(hexstr: str) -> tuple[int, int, int]:
