@@ -1,14 +1,6 @@
-# Battle Pong (PyGame)
+# Battle Pong (PyGame) – Rebuilt Backbone
 
-Jetzt als Event-getriebenes Sandbox-Pong, in dem wirklich jede Zahl zur Laufzeit
-angepasst werden kann (Speed, Größe, Ballanzahl, etc.).
-
-- **RuntimeSettings** (`pong/settings.py`) hält alle Werte mutierbar.
-- **Events** (`pong/events.py`) für Setting-Patches, Ball-Spawns, Scores, Resets.
-- **Systems** (`pong/systems.py`) demonstriert Live-Manipulation (ChaosSystem).
-- **PowerupManager** (`pong/powerups.py`) bleibt schlank und event-basiert.
-- **Skins & Particles** (`pong/skins.py`, `pong/particles.py`) für Sprites/Rotation und Effekte.
-- **Scene/UX** (`pong/app.py`, `pong/scenes.py`, `pong/ui/widgets.py`) für Menüs (Title, Mode Select, Play, Pause, Inventory, Shop, Settings).
+Aktueller Zustand: Minimal-Gameplay-Stub mit Szene-Stack, Transitions, Skin-System, Satire-Shop/Credits, Theme-aware UI.
 
 ## Start
 
@@ -17,42 +9,38 @@ python3 -m pip install pygame
 python3 main.py
 ```
 
-## Erweitern (quick path)
+## Features (Stand now)
 
-1. Events definieren (`pong/events.py`), z. B. `SettingsChangeRequested`.
-2. System oder Powerup schreiben, das sich auf die Events subscribed.
-3. Optional: eigene Settings-Patches per `bus.publish(SettingsChangeRequested(...))`.
-4. Balls on demand: `bus.publish(SpawnBallRequested(count=3, speed=500))`.
+- Scene-Stack mit Fade-Transitions (Title, Play, Pause, Settings, Skins, Shop).
+- Skin-System mit Paletten, optionalem Hintergrundbild; Wechsel via F6 oder Skins-Szene.
+- Credits/Wallet & Owned-Skins persistent (`data/wallet.json`, `data/skins_owned.json`); Satire-Shop vergibt Credits, Skins können gekauft und angewendet werden.
+- Theme Tokens: UI-Farben passen sich der aktiven Skin-Palette an.
+- Input: Tastatur + Gamepad (Buttons/Hat), Focus-Navigation; ESC/PAUSE kontextsensitiv (Play↔Pause, Settings zurück nach Pause/Title).
+- Debug-Overlay (FPS, Scene, Transition, Skin, Credits, in_game) – immer sichtbar.
+- Headless-Fallback: wenn kein Video-Device verfügbar ist, nutzt SDL den Dummy-Treiber (Fensterlos), damit das Programm nicht hängen bleibt.
+- Audio entfernt (Stand jetzt), um Hänger zu vermeiden.
 
-## Controls
+## Steuerung (aktuell)
 
-- Links: `W/S`
-- Rechts: `Pfeil hoch/runter`
-- Nach Spielende: `R` für Restart
-- `Space`: einen weiteren Ball spawnen
-- Optional: Hintergründe/Tiles und Sprites können über Settings gewechselt werden (siehe unten).
+- Pfeiltasten / W-S zur Menü-Navigation, Enter/Space bestätigt.
+- ESC/PAUSE: in Play Pause toggeln, in Settings zurück, sonst zum Title (abhängig vom Stack).
+- F5/F6: Skins neu einlesen / durch Skins rotieren.
 
-## Live-Tweaks & Beispiele
+## Ökonomie (Satire)
 
-- **Ball-Speed/Size ändern:** `bus.publish(SettingsChangeRequested(section="ball", values={"speed": 480, "size": 12}))`
-- **Display umschalten:** `bus.publish(SettingsChangeRequested(section="display", values={"width": 1280, "height": 720}))`
-  (Screen wird sofort neu erstellt.)
-- **ChaosSystem** (standardmäßig aktiv) zeigt, wie Systeme per EventBus Werte umschreiben und neue Bälle spawnen.
-- **Skins setzen:** `bus.publish(SettingsChangeRequested(section="sprites", values={"ball_image": "assets/ball.png", "paddle_image": "assets/paddle.png", "background_image": "assets/bg.png", "ball_rotation_speed": 120}))`
-  oder lege Dateien in `skins/ball|paddle|background/` ab und trage den Pfad entsprechend ein (z. B. `skins/ball/ball_fire.png`).
+- Shop-Szene bietet Credit-Packs (1000C, 5000C) „für 9.999€ / 49.999€“ – Klick vergibt Credits sofort.
+- Skins kosten 1000C (basic) oder 2000C (premium); Kauf schaltet Skin frei, Apply setzt Palette/Assets.
 
-## Skins-Ordner
+## Dateien & Pfade
 
-- `skins/ball/` – PNGs für Bälle (werden kreisförmig maskiert & skaliert), README beschreibt Format.
-- `skins/paddle/` – PNGs für Paddles (werden skaliert).
-- `skins/background/` – PNG/JPG für Hintergründe (skaliert oder gekachelt).
-- `skins/trail/` – Platzhalter für künftige Trail-/Animation-Assets.
+- `data/wallet.json`, `data/skins_owned.json` – Persistenz für Credits und Besitz.
+- `skins/<pack>/manifest.json` – Paletten/Assets für Skins.
+- `pong/app.py` – App Loop, SceneManager, Theme/Skin/Wallet-Handling.
+- `pong/scenes/` – Title/Play/Pause/Settings/Skins/Shop.
+- `pong/ui/` – Widgets, Theme, Layout, Focus, Tween.
+- `pong/skin/` – Manifest-Schema + Registry.
 
-## Dateien
+## Was noch fehlt / Next Steps (geplant)
 
-- `pong/game.py` – Game-Loop, Event-Wiring, Multi-Ball-Handling, UI.
-- `pong/settings.py` – zentrale RuntimeSettings, patchbar zur Laufzeit.
-- `pong/events.py` – domänenspezifische Events inkl. Settings-/Spawn-Requests.
-- `pong/systems.py` – Beispielsysteme (Chaos).
-- `pong/entities.py` – Paddles & Balls lesen immer aktuelle Settings.
-- `pong/app.py`, `pong/scenes.py`, `pong/ui/widgets.py` – SceneManager + Menüs (Title, Play, Inventory, Shop, Settings, Pause).
+- Gameplay-Core (Ball/Paddle, Physik) neu anbinden an Skin-Assets.
+- Tests (SceneManager, Manifest, Input/Focus).

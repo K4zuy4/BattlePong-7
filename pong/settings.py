@@ -50,13 +50,6 @@ class SpriteSettings:
 
 
 @dataclass
-class AudioSettings:
-    master_volume: float = 1.0
-    sfx_volume: float = 1.0
-    screen_shake: float = 0.5
-
-
-@dataclass
 class TrailSettings:
     effect: str = "trail_none"
 
@@ -72,7 +65,6 @@ class RuntimeSettings:
     paddle: PaddleSettings = field(default_factory=PaddleSettings)
     ball: BallSettings = field(default_factory=BallSettings)
     sprites: SpriteSettings = field(default_factory=SpriteSettings)
-    audio: AudioSettings = field(default_factory=AudioSettings)
     trail: TrailSettings = field(default_factory=TrailSettings)
     match: MatchSettings = field(default_factory=MatchSettings)
 

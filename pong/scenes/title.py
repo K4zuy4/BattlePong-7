@@ -19,9 +19,11 @@ class TitleScene(Scene):
         self.theme = theme
         w, h = 260, 56
         spacing = 18
-        start_y = screen_rect.centery - 2 * (h + spacing) / 2
+        start_y = screen_rect.centery - 3 * (h + spacing) / 2
         specs = [
             ButtonSpec("Play", route="play"),
+            ButtonSpec("Skins", route="skins"),
+            ButtonSpec("Shop", route="shop"),
             ButtonSpec("Settings", route="settings"),
             ButtonSpec("Exit", action=self._exit),
         ]

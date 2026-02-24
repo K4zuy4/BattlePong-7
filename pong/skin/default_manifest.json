@@ -1,0 +1,18 @@
+{
+  "name": "default",
+  "author": "system",
+  "palette": {
+    "primary": "#5B8CFF",
+    "accent": "#FFB86C",
+    "background": "#0E111A",
+    "foreground": "#E6E6E6",
+    "highlight": "#FFFFFF"
+  },
+  "assets": {
+    "bg": null,
+    "ball": null,
+    "paddle": null
+  },
+  "trail": {"effect": "trail_none"},
+  "animation": {}
+}

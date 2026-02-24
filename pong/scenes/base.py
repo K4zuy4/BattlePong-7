@@ -88,8 +88,15 @@ class SceneManager:
 
     def _navigate(self, action: Callable[[], None], kind: str, target: str) -> None:
         """Optionally wrap navigation in a transition."""
+        # Initial navigation: no stack yet -> execute immediately to avoid blank screen
+        if not self._stack:
+            action()
+            self.log.info("Scene %s", kind, extra={"target": target})
+            return
+
         if self.transitions and self.transition_spec_provider:
             if self.transitions.active:
+                self.log.debug("Transition active; navigation skipped", extra={"kind": kind, "target": target})
                 return
             spec = self.transition_spec_provider()
             if spec.duration > 0:

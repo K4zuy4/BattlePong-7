@@ -24,13 +24,6 @@ class TrailSpec:
 
 
 @dataclass
-class AudioSpec:
-    hit: Optional[str] = None
-    score: Optional[str] = None
-    ui: Optional[str] = None
-
-
-@dataclass
 class AnimationSpec:
     spawn: Optional[str] = None
     hit: Optional[str] = None
@@ -45,7 +38,6 @@ class SkinManifest:
     palette: Palette = field(default_factory=Palette)
     assets: dict[str, str] = field(default_factory=dict)  # e.g., {"ball": "ball.png", "paddle": "pad.png", "bg": "bg.png"}
     trail: TrailSpec = field(default_factory=TrailSpec)
-    audio: AudioSpec = field(default_factory=AudioSpec)
     animation: AnimationSpec = field(default_factory=AnimationSpec)
 
 
@@ -86,7 +78,6 @@ def load_manifest(path: Path) -> SkinManifest:
         palette=palette,
         assets=data.get("assets", {}),
         trail=TrailSpec(**data.get("trail", {})),
-        audio=AudioSpec(**data.get("audio", {})),
         animation=AnimationSpec(**data.get("animation", {})),
     )
     return manifest
