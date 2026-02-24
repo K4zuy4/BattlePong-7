@@ -17,16 +17,20 @@ class PlayScene(Scene):
         self.font = font
         self.font_small = font_small
         self.time = 0.0
+        play_area = manager.app_ctx.get("play_area", (960, 540)) if hasattr(manager, "app_ctx") else (960, 540)
+        self.width, self.height = play_area
+        pad_w, pad_h = 14, 100
+        margin = 32
         self.ball = {
-            "x": 200.0,
-            "y": 140.0,
-            "vx": 220.0,
-            "vy": 140.0,
+            "x": self.width / 2 - 11,
+            "y": self.height / 2 - 11,
+            "vx": 260.0,
+            "vy": 180.0,
             "size": 22,
         }
         self.paddles = {
-            "left": {"x": 40.0, "y": 160.0, "w": 14, "h": 80, "speed": 280.0},
-            "right": {"x": 520.0, "y": 160.0, "w": 14, "h": 80, "speed": 280.0},
+            "left": {"x": margin, "y": (self.height - pad_h) / 2, "w": pad_w, "h": pad_h, "speed": 320.0},
+            "right": {"x": self.width - margin - pad_w, "y": (self.height - pad_h) / 2, "w": pad_w, "h": pad_h, "speed": 320.0},
         }
 
     # Event handling ----------------------------------------------------- #
@@ -57,7 +61,6 @@ class PlayScene(Scene):
             screen.fill(bg)
 
     def _draw_world(self, screen: pygame.Surface) -> None:
-        # Placeholder: oscillating circle to show world layer separation
         ctx = self.manager.app_ctx if hasattr(self.manager, "app_ctx") else {}
         palette = ctx.get("palette")
         accent = (90, 140, 255) if not palette else _hex_to_rgb(palette.accent)
@@ -95,7 +98,7 @@ class PlayScene(Scene):
         b = self.ball
         b["x"] += b["vx"] * dt
         b["y"] += b["vy"] * dt
-        w, h = self.manager.app_ctx.get("play_area", (self.manager.scenes["play"].__dict__.get('screen_width', 640), 360)) if hasattr(self.manager, "app_ctx") else (640, 360)
+        w, h = self.width, self.height
         size = b["size"]
         if b["y"] <= 0:
             b["y"] = 0
@@ -127,7 +130,7 @@ class PlayScene(Scene):
         if input_state and input_state.is_held(Action.DOWN):
             self.paddles["left"]["y"] += self.paddles["left"]["speed"] * dt
         # clamp
-        h = self.manager.app_ctx.get("play_area", (self.manager.scenes["play"].__dict__.get('screen_width', 640), 360))[1] if hasattr(self.manager, "app_ctx") else 360
+        h = self.height
         for key in ("left", "right"):
             p = self.paddles[key]
             p["y"] = max(0, min(h - p["h"], p["y"]))

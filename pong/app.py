@@ -76,6 +76,7 @@ class GameApp:
             "credits": self.credits,
             "owned_skins": self.owned_skins,
             "skin_names": self._skin_names,
+            "play_area": (self.disp.width, self.disp.height),
         }
         self.log.info("Applying initial skin...")
         if self._skin_names:
@@ -180,6 +181,7 @@ class GameApp:
             self.manager.app_ctx["credits"] = self.credits
             self.manager.app_ctx["owned_skins"] = self.owned_skins
             self.manager.app_ctx["skin_names"] = self._skin_names
+            self.manager.app_ctx["play_area"] = (self.disp.width, self.disp.height)
 
             # Fixed-step updates
             while self.clock.step_ready():
