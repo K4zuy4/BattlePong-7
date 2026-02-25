@@ -46,6 +46,7 @@ class GameApp:
         # game state flag
         self.in_game = False
         self.palette = None
+        self.theme_cfg = load_json("data/theme.json", {})
         self.theme = self._build_theme_default()
 
         # economy state
@@ -212,7 +213,7 @@ class GameApp:
     def _apply_skin(self, name: str) -> None:
         manifest = self.skins.apply(name)
         self.palette = manifest.palette
-        self._update_theme_from_palette(self.palette)
+        # Keep UI theme from theme.json; do not override with palette to honor user colors.
         self.manager.app_ctx["palette"] = self.palette
         # load optional assets
         self._load_skin_assets(manifest)
@@ -248,26 +249,32 @@ class GameApp:
         save_json("data/skins_owned.json", list(self.owned_skins))
 
     def _build_theme_default(self) -> ThemeTokens:
-        return ThemeTokens(
-            variants={
-                "primary": ButtonStyle(
-                    base=(28, 32, 44),
-                    hover=(74, 110, 188),
-                    press=(20, 22, 30),
-                    border=(240, 240, 255),
-                    text=(250, 250, 255),
-                    radius=12,
-                ),
-                "ghost": ButtonStyle(
-                    base=(16, 18, 24),
-                    hover=(44, 54, 76),
-                    press=(10, 12, 16),
-                    border=(170, 190, 220),
-                    text=(220, 230, 245),
-                    radius=12,
-                ),
-            }
+        cfg = self.theme_cfg
+        def get(section: str, key: str, default: str) -> str:
+            return cfg.get(section, {}).get(key, default) if isinstance(cfg, dict) else default
+        def get_int(section: str, key: str, default: int) -> int:
+            try:
+                return int(cfg.get(section, {}).get(key, default))
+            except Exception:
+                return default
+
+        primary = ButtonStyle(
+            base=_hex_to_rgb(get("primary", "base", "#1c202c")),
+            hover=_hex_to_rgb(get("primary", "hover", "#4a6ebe")),
+            press=_hex_to_rgb(get("primary", "press", "#141824")),
+            border=_hex_to_rgb(get("primary", "border", "#f0f0ff")),
+            text=_hex_to_rgb(get("primary", "text", "#fafaff")),
+            radius=get_int("primary", "radius", 12),
         )
+        ghost = ButtonStyle(
+            base=_hex_to_rgb(get("ghost", "base", "#0f1116")),
+            hover=_hex_to_rgb(get("ghost", "hover", "#2c3650")),
+            press=_hex_to_rgb(get("ghost", "press", "#0a0c10")),
+            border=_hex_to_rgb(get("ghost", "border", "#aabedc")),
+            text=_hex_to_rgb(get("ghost", "text", "#dce4f5")),
+            radius=get_int("ghost", "radius", 12),
+        )
+        return ThemeTokens(variants={"primary": primary, "ghost": ghost})
 
     def _update_theme_from_palette(self, palette) -> None:
         if palette is None:

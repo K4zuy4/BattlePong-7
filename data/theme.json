@@ -1,0 +1,18 @@
+{
+  "primary": {
+    "base": "#4b2f6f",
+    "hover": "#8d5ee0",
+    "press": "#3a2356",
+    "border": "#e9ddff",
+    "text": "#f7f1ff",
+    "radius": 12
+  },
+  "ghost": {
+    "base": "#2b213a",
+    "hover": "#5b4a80",
+    "press": "#1f182c",
+    "border": "#cbb6ff",
+    "text": "#e6dcff",
+    "radius": 12
+  }
+}
