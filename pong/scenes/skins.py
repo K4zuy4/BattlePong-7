@@ -113,7 +113,8 @@ class SkinsScene(Scene):
         if not self._skin_list:
             return
         name = self._skin_list[self._selected_idx]
-        owned = self.manager.app_ctx.get("owned_skins", set()) if hasattr(self.manager, "app_ctx") else set()
+        owned_items = self.manager.app_ctx.get("owned_items", {}) if hasattr(self.manager, "app_ctx") else {}
+        owned = owned_items.get("ball", set()) if isinstance(owned_items, dict) else set()
         if name not in owned:
             logger.info("Apply blocked, not owned", extra={"skin": name})
             self.status_msg = "Not owned"
@@ -131,7 +132,7 @@ class SkinsScene(Scene):
         app = getattr(self.manager, "app", None)
         if not app:
             return
-        if name in app.owned_skins:
+        if name in app.owned_items.get("ball", set()):
             self.status_msg = "Already owned"
             logger.info("Purchase skipped; already owned", extra={"skin": name})
             return
@@ -143,10 +144,10 @@ class SkinsScene(Scene):
             return
         before = app.credits
         app.credits -= price
-        app.owned_skins.add(name)
+        app.owned_items.setdefault("ball", set()).add(name)
         app._save_wallet()
-        app._save_owned_skins()
-        self.manager.app_ctx["owned_skins"] = app.owned_skins
+        app._save_owned_items()
+        self.manager.app_ctx["owned_items"] = app.owned_items
         self.manager.app_ctx["credits"] = app.credits
         self.status_msg = f"Bought {name} for {price}C"
         logger.info(

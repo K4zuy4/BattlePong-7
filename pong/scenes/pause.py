@@ -15,21 +15,7 @@ class PauseScene(Scene):
         self.font = font
         self.font_small = font_small
         self.theme = theme
-        specs = [
-            ButtonSpec("Resume", action=self._resume),
-            ButtonSpec("Settings", action=self._open_settings),
-            ButtonSpec("Quit to Title", action=self._quit_to_title, variant="ghost"),
-        ]
-        self.buttons = button_column(
-            anchor=(60, 180),
-            width=200,
-            item_height=48,
-            spacing=12,
-            specs=specs,
-            font=font_small,
-            on_route=self.manager.set_scene,
-            theme=theme,
-        )
+        self._build_buttons()
 
     def _resume(self) -> None:
         self.manager.pop()
@@ -40,6 +26,37 @@ class PauseScene(Scene):
     def _quit_to_title(self) -> None:
         # clear to title with transition; drop underlying play scene
         self.manager.set_scene("title")
+
+    def _build_buttons(self):
+        specs = [
+            ButtonSpec("Resume", action=self._resume),
+            ButtonSpec("Settings", action=self._open_settings),
+            ButtonSpec("Quit to Title", action=self._quit_to_title, variant="ghost"),
+        ]
+        screen = self.manager.app.screen if hasattr(self.manager, "app") else None
+        w, h = 200, 48
+        spacing = 12
+        if screen:
+            rows = len(specs)
+            total_h = rows * h + (rows - 1) * spacing
+            anchor = (screen.get_width() // 2 - w // 2, screen.get_height() // 2 - total_h // 2)
+        else:
+            anchor = (60, 180)
+        self.buttons = button_column(
+            anchor=anchor,
+            width=w,
+            item_height=h,
+            spacing=spacing,
+            specs=specs,
+            font=self.font_small,
+            on_route=self.manager.set_scene,
+            theme=self.theme,
+        )
+
+    def on_event(self, event) -> None:
+        from pong.events import ResolutionChanged
+        if isinstance(event, ResolutionChanged):
+            return
 
     def handle_event(self, event: pygame.event.Event) -> None:
         for b in self.buttons:

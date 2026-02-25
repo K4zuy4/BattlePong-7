@@ -11,7 +11,7 @@ python3 main.py
 
 ## Features (Stand now)
 
-- Scene-Stack mit Fade-Transitions (Title, Play, Pause, Settings, Skins, Shop).
+- Scene-Stack mit Fade-Transitions (Title, Play, Pause, Settings, Shop, Inventory).
 - Skin-System mit Paletten, optionalem Hintergrundbild; Wechsel via F6 oder Skins-Szene.
 - Credits/Wallet & Owned-Skins persistent (`data/wallet.json`, `data/skins_owned.json`); Satire-Shop vergibt Credits, Skins können gekauft und angewendet werden.
 - Theme Tokens: UI-Farben passen sich der aktiven Skin-Palette an.

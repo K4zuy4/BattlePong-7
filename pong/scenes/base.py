@@ -24,6 +24,10 @@ class Scene:
         """Optional input processing (action-based) separate from raw events."""
         pass
 
+    def on_event(self, event) -> None:
+        """Domain events dispatched via EventBus."""
+        pass
+
     def update(self, dt: float) -> None:
         raise NotImplementedError
 
@@ -48,6 +52,7 @@ class SceneManager:
         self.transitions: TransitionController | None = None
         # default spec provider can be overridden per call
         self.transition_spec_provider: Optional[Callable[[], TransitionSpec]] = None
+        self.app = None  # set by GameApp
 
     def attach_transitions(self, controller: TransitionController, spec_provider: Callable[[], TransitionSpec]) -> None:
         self.transitions = controller
@@ -60,10 +65,18 @@ class SceneManager:
     def set_scene(self, name: str, payload: dict | None = None) -> None:
         if self.current_name == name:
             return
-        self._navigate(lambda: self._replace_stack_with(name, payload), "set_scene", name)
+        prev = self.current_name
+        def action():
+            self._replace_stack_with(name, payload)
+            self._emit_scene_changed(prev, name)
+        self._navigate(action, "set_scene", name)
 
     def push(self, name: str, payload: dict | None = None) -> None:
-        self._navigate(lambda: self._push(name, payload), "push", name)
+        prev = self.current_name
+        def action():
+            self._push(name, payload)
+            self._emit_scene_changed(prev, name)
+        self._navigate(action, "push", name)
 
     def pop(self, payload: dict | None = None) -> None:
         if not self._stack:
@@ -77,6 +90,7 @@ class SceneManager:
             self.log.info("Scene pop", extra={"popped": popped.name})
             if self._stack:
                 self.top.scene.on_enter(payload)
+                self._emit_scene_changed(popped.name, self.current_name)
 
         if self.transitions and self.transition_spec_provider and not self.transitions.active:
             spec = self.transition_spec_provider()
@@ -85,6 +99,14 @@ class SceneManager:
                 self.log.info("Scene pop (transition)")
                 return
         apply_pop()
+
+    def _emit_scene_changed(self, previous: str | None, current: str | None) -> None:
+        from pong.events import SceneChanged, GameEvent
+        if self.app and hasattr(self.app, "bus"):
+            try:
+                self.app.bus.publish(SceneChanged(previous=previous, current=current))
+            except Exception:
+                self.log.exception("Failed to publish SceneChanged", extra={"previous": previous, "current": current})
 
     def _navigate(self, action: Callable[[], None], kind: str, target: str) -> None:
         """Optionally wrap navigation in a transition."""
@@ -146,6 +168,13 @@ class SceneManager:
     def handle_input(self, input_state) -> None:
         if self._stack:
             self.top.scene.handle_input(input_state)
+
+    def handle_game_event(self, event) -> None:
+        if self._stack and hasattr(self.top.scene, "on_event"):
+            try:
+                self.top.scene.on_event(event)
+            except Exception:
+                self.log.exception("Scene event handler failed", extra={"scene": self.current_name, "event": type(event).__name__})
 
     def update(self, dt: float) -> None:
         if self._stack:

@@ -5,12 +5,12 @@ from __future__ import annotations
 import logging
 import pygame
 
-from pong.events import EventBus
-from pong.scenes import SceneManager, TitleScene, SettingsScene, PlayScene, PauseScene, SkinsScene, ShopScene
+from pong.events import EventBus, GameEvent, KeyAction, ResolutionChanged
+from pong.scenes import SceneManager, TitleScene, SettingsScene, PlayScene, PauseScene, ShopScene, InventoryScene
 from pong.scenes.transitions import TransitionController, TransitionSpec
 from pong.settings import RuntimeSettings
 from pong.core.clock import Clock
-from pong.core.input import InputState, Action
+from pong.core.input import InputState, Action, build_keymap_from_actions, default_action_keys
 from pong.core.debug import DebugOverlay, DebugOverlayConfig
 from pong.skin import SkinRegistry
 from pathlib import Path
@@ -34,6 +34,13 @@ class GameApp:
         self.bus = EventBus()
         self.log.debug("RuntimeSettings and EventBus created")
 
+        # load persisted input config
+        self.input_cfg = load_json("data/input_bindings.json", {})
+
+        self.disp = self.settings.display
+        # bump default window a bit larger
+        self.settings.display.width = 1280
+        self.settings.display.height = 720
         self.disp = self.settings.display
         self.screen = self._init_display(self.disp.width, self.disp.height, self.disp.title)
         self.clock = Clock()
@@ -51,16 +58,23 @@ class GameApp:
 
         # economy state
         self.credits = 0
-        self.owned_skins: set[str] = set()
+        self.owned_items: dict[str, set[str]] = {}
 
         self.skins = SkinRegistry(Path("skins"))
         self._skin_names = self.skins.list()
         self._skin_index = 0
         self._load_wallet()
-        self._load_owned_skins()
+        self._load_owned_items()
+        self.inventory = self._load_inventory()
+        self.ball_skins = self._load_ball_skins()
+        self.ball_skin_index = 0
+        self.paddle_skins = self._load_paddle_skins()
+        self.paddle_skin_index = 0
 
         self.manager = SceneManager()
         self.manager.app = self
+        # forward all events to current scene hook
+        self.bus.subscribe(GameEvent, self.manager.handle_game_event)
         self.transitions = TransitionController()
         rect = self.screen.get_rect()
         self.log.info("Registering scenes...")
@@ -68,20 +82,31 @@ class GameApp:
         self.manager.register("settings", SettingsScene(self.manager, self.font, self.font_small, self.theme))
         self.manager.register("play", PlayScene(self.manager, self.font, self.font_small))
         self.manager.register("pause", PauseScene(self.manager, self.font, self.font_small, self.theme))
-        self.manager.register("skins", SkinsScene(self.manager, self.font, self.font_small, self.theme))
         self.manager.register("shop", ShopScene(self.manager, self.font, self.font_small, self.theme))
+        self.manager.register("inventory", InventoryScene(self.manager, self.font, self.font_small, self.theme))
         # share app context with scenes that need global flags
         self.manager.app_ctx = {
             "in_game": self.in_game,
             "palette": self.palette,
             "credits": self.credits,
-            "owned_skins": self.owned_skins,
+            "owned_items": self.owned_items,
             "skin_names": self._skin_names,
             "play_area": (self.disp.width, self.disp.height),
+            "ball_skins": self.ball_skins,
+            "ball_skin_name": None,
+            "ball_image": None,
+            "paddle_skins": self.paddle_skins,
+            "paddle_skin_name": None,
+            "paddle_image": None,
+            "inventory": self.inventory,
         }
         self.log.info("Applying initial skin...")
         if self._skin_names:
             self._apply_skin(self._skin_names[self._skin_index])
+        if self.ball_skins:
+            self._apply_ball_skin(self.ball_skin_index)
+        if self.paddle_skins:
+            self._apply_paddle_skin(self.paddle_skin_index)
 
         # Initial scene without transition to avoid blank screen
         self.log.info("Setting initial scene 'title' (no transition)...")
@@ -89,7 +114,7 @@ class GameApp:
         self._configure_transitions()
         self.log.info("GameApp initialized; starting at 'title'")
 
-        self.input = InputState()
+        self.input = InputState(keymap=self._build_keymap())
         self.debug_overlay = DebugOverlay(DebugOverlayConfig())
         self.debug_overlay.set_provider(self._debug_lines)
 
@@ -127,6 +152,27 @@ class GameApp:
 
         self.manager.attach_transitions(self.transitions, provider)
 
+    def set_resolution(self, width: int, height: int) -> None:
+        """Resolution change disabled; keep single window size."""
+        return
+
+    def _build_keymap(self):
+        cfg = self.input_cfg if isinstance(self.input_cfg, dict) else {}
+        actions = default_action_keys()
+        for name, key in cfg.items():
+            try:
+                actions[name] = int(key)
+            except Exception:
+                continue
+        return build_keymap_from_actions(actions)
+
+    def save_input_cfg(self, action_keys: dict[str, int]) -> None:
+        self.input_cfg = action_keys
+        save_json("data/input_bindings.json", action_keys)
+
+    def save_display_cfg(self) -> None:
+        pass
+
     def run(self) -> None:
         self.log.info("Entering main loop")
         while self.running:
@@ -142,6 +188,7 @@ class GameApp:
                     self.input.process_event(event)
                     self.manager.handle_event(event)
                     if event.type == pygame.KEYDOWN:
+                        self.bus.publish(KeyAction(key=event.key, action="down", mods=event.mod))
                         if event.key == pygame.K_F5:
                             self.skins.refresh()
                             self._skin_names = self.skins.list()
@@ -151,6 +198,20 @@ class GameApp:
                             self._skin_index = (self._skin_index + 1) % len(self._skin_names)
                             self._apply_skin(self._skin_names[self._skin_index])
                             self.log.info("Skin cycled", extra={"skin": self._skin_names[self._skin_index]})
+                        elif event.key == pygame.K_F7 and self.ball_skins:
+                            self.ball_skin_index = (self.ball_skin_index + 1) % len(self.ball_skins)
+                            self._apply_ball_skin(self.ball_skin_index)
+                            self.log.info("Ball skin cycled", extra={"ball_skin": self.ball_skins[self.ball_skin_index]})
+                        elif event.key == pygame.K_F8 and self.ball_skins:
+                            self.ball_skin_index = (self.ball_skin_index - 1) % len(self.ball_skins)
+                            self._apply_ball_skin(self.ball_skin_index)
+                            self.log.info("Ball skin cycled", extra={"ball_skin": self.ball_skins[self.ball_skin_index]})
+                        elif event.key == pygame.K_F9 and self.paddle_skins:
+                            self.paddle_skin_index = (self.paddle_skin_index + 1) % len(self.paddle_skins)
+                            self._apply_paddle_skin(self.paddle_skin_index)
+                            self.log.info("Paddle skin cycled", extra={"paddle_skin": self.paddle_skins[self.paddle_skin_index]})
+                    elif event.type == pygame.KEYUP:
+                        self.bus.publish(KeyAction(key=event.key, action="up", mods=event.mod))
 
             # global actions
             pressed_back = self.input.consume(Action.BACK)
@@ -180,9 +241,18 @@ class GameApp:
             self._update_game_flag()
             self.manager.app_ctx["in_game"] = self.in_game
             self.manager.app_ctx["credits"] = self.credits
-            self.manager.app_ctx["owned_skins"] = self.owned_skins
+            self.manager.app_ctx["owned_items"] = self.owned_items
             self.manager.app_ctx["skin_names"] = self._skin_names
             self.manager.app_ctx["play_area"] = (self.disp.width, self.disp.height)
+            self.manager.app_ctx["ball_skins"] = self.ball_skins
+            self.manager.app_ctx["ball_skin_name"] = (
+                self.ball_skins[self.ball_skin_index] if self.ball_skins else None
+            )
+            self.manager.app_ctx["paddle_skins"] = self.paddle_skins
+            self.manager.app_ctx["paddle_skin_name"] = (
+                self.paddle_skins[self.paddle_skin_index] if self.paddle_skins else None
+            )
+            self.manager.app_ctx["inventory"] = self.inventory
 
             # Fixed-step updates
             while self.clock.step_ready():
@@ -236,17 +306,97 @@ class GameApp:
     def _save_wallet(self) -> None:
         save_json("data/wallet.json", {"credits": self.credits})
 
-    def _load_owned_skins(self) -> None:
-        data = load_json("data/skins_owned.json", [])
-        if isinstance(data, list):
-            self.owned_skins = set(map(str, data))
-        else:
-            self.owned_skins = set()
+    def _load_owned_items(self) -> None:
+        data = load_json("data/owned_items.json", {"ball": [], "paddle": []})
+        owned: dict[str, set[str]] = {}
+        for cat, lst in data.items():
+            if isinstance(lst, list):
+                owned[cat] = set(map(str, lst))
+        self.owned_items = owned
         if hasattr(self, "manager") and hasattr(self.manager, "app_ctx"):
-            self.manager.app_ctx["owned_skins"] = self.owned_skins
+            self.manager.app_ctx["owned_items"] = self.owned_items
 
-    def _save_owned_skins(self) -> None:
-        save_json("data/skins_owned.json", list(self.owned_skins))
+    def _save_owned_items(self) -> None:
+        save_json("data/owned_items.json", {k: list(v) for k, v in self.owned_items.items()})
+
+    def _load_inventory(self) -> dict:
+        data = load_json("data/inventory.json", {"categories": []})
+        cats = data.get("categories", []) if isinstance(data, dict) else []
+        categories = []
+        for c in cats:
+            cid = c.get("id")
+            label = c.get("label", cid)
+            price = int(c.get("default_price", 0)) if cid else 0
+            items = []
+            raw_items = c.get("items", []) if isinstance(c, dict) else []
+            for itm in raw_items:
+                path = itm.get("path")
+                if not path:
+                    continue
+                items.append(
+                    {
+                        "id": itm.get("id") or Path(path).stem,
+                        "name": itm.get("name") or Path(path).stem.replace("_", " ").title(),
+                        "path": path,
+                        "price": int(itm.get("price", price)),
+                        "rarity": itm.get("rarity", "common"),
+                    }
+                )
+            if cid:
+                categories.append({"id": cid, "label": label, "default_price": price, "items": items})
+        self.log.info(
+            "Inventory categories loaded",
+            extra={
+                "count": len(categories),
+                "items": {c["id"]: len(c.get("items", [])) for c in categories},
+            },
+        )
+        return {"categories": categories}
+
+    # ball skins -------------------------------------------------------- #
+    def _load_ball_skins(self) -> list[str]:
+        base = Path("skins/ball")
+        if not base.exists():
+            return []
+        files = sorted([str(p) for p in base.iterdir() if p.is_file() and p.suffix.lower() in {".png", ".jpg", ".jpeg"}])
+        self.log.info("Ball skins discovered", extra={"count": len(files)})
+        return files
+
+    def _load_paddle_skins(self) -> list[str]:
+        base = Path("skins/paddle")
+        if not base.exists():
+            return []
+        files = sorted([str(p) for p in base.iterdir() if p.is_file() and p.suffix.lower() in {".png", ".jpg", ".jpeg"}])
+        self.log.info("Paddle skins discovered", extra={"count": len(files)})
+        return files
+
+    def _apply_ball_skin(self, index: int) -> None:
+        if not self.ball_skins:
+            return
+        idx = index % len(self.ball_skins)
+        path = self.ball_skins[idx]
+        try:
+            surf = pygame.image.load(path).convert_alpha()
+            self.manager.app_ctx["ball_image"] = surf
+            self.ball_skin_index = idx
+            self.manager.app_ctx["ball_skin_name"] = path
+            self.log.info("Ball skin applied", extra={"path": path, "index": idx})
+        except Exception as exc:
+            self.log.warning("Failed to load ball skin", extra={"path": path, "error": str(exc)})
+
+    def _apply_paddle_skin(self, index: int) -> None:
+        if not self.paddle_skins:
+            return
+        idx = index % len(self.paddle_skins)
+        path = self.paddle_skins[idx]
+        try:
+            surf = pygame.image.load(path).convert_alpha()
+            self.manager.app_ctx["paddle_image"] = surf
+            self.paddle_skin_index = idx
+            self.manager.app_ctx["paddle_skin_name"] = path
+            self.log.info("Paddle skin applied", extra={"path": path, "index": idx})
+        except Exception as exc:
+            self.log.warning("Failed to load paddle skin", extra={"path": path, "error": str(exc)})
 
     def _build_theme_default(self) -> ThemeTokens:
         cfg = self.theme_cfg

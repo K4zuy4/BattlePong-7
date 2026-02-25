@@ -130,6 +130,8 @@ class ItemTile:
         locked: bool,
         on_click,
         item_id: str,
+        price: int = 0,
+        rarity: str = "common",
     ) -> None:
         self.rect = rect
         self.image = image
@@ -138,12 +140,14 @@ class ItemTile:
         self.on_click = on_click
         self.hovered = False
         self.item_id = item_id
+        self.price = price
+        self.rarity = rarity
 
     def handle_event(self, event: pygame.event.Event) -> None:
         if event.type == pygame.MOUSEMOTION:
             self.hovered = self.rect.collidepoint(event.pos)
         elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-            if self.rect.collidepoint(event.pos) and not self.locked:
+            if self.rect.collidepoint(event.pos):
                 self.on_click(self.item_id)
 
     def update(self, dt: float) -> None:
@@ -167,9 +171,12 @@ class ItemTile:
             overlay = pygame.Surface(self.rect.size, pygame.SRCALPHA)
             overlay.fill((0, 0, 0, 140))
             screen.blit(overlay, self.rect.topleft)
-            lock_txt = font.render("Locked", True, (255, 180, 180))
+            lock_txt = font.render(f"{self.price}C", True, (255, 210, 180))
             lock_rect = lock_txt.get_rect(center=self.rect.center)
             screen.blit(lock_txt, lock_rect)
+        rarity_txt = font.render(self.rarity.title(), True, (210, 200, 255))
+        rarity_rect = rarity_txt.get_rect(midtop=(self.rect.centerx, self.rect.top - 16))
+        screen.blit(rarity_txt, rarity_rect)
         logger.debug("ItemTile draw", extra={"id": self.item_id, "locked": self.locked, "selected": selected})
 
 class Label:

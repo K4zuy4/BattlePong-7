@@ -17,27 +17,40 @@ class TitleScene(Scene):
         self.font_big = font_big
         self.font_small = font_small
         self.theme = theme
-        w, h = 260, 56
-        spacing = 18
-        start_y = screen_rect.centery - 3 * (h + spacing) / 2
+        self._build_buttons(screen_rect)
+
+    def _build_buttons(self, screen_rect: pygame.Rect) -> None:
+        w, h = 220, 52
+        spacing = 12
+        cols = 2
         specs = [
             ButtonSpec("Play", route="play"),
-            ButtonSpec("Skins", route="skins"),
+            ButtonSpec("Inventory", route="inventory"),
             ButtonSpec("Shop", route="shop"),
             ButtonSpec("Settings", route="settings"),
             ButtonSpec("Exit", action=self._exit),
         ]
-        anchor = (screen_rect.centerx - w // 2, int(start_y))
-        self.buttons = button_column(
-            anchor=anchor,
-            width=w,
-            item_height=h,
-            spacing=spacing,
-            specs=specs,
-            font=font_small,
-            on_route=self.manager.set_scene,
-            theme=theme,
-        )
+        self.buttons = []
+        start_x = screen_rect.centerx - (cols * w + (cols - 1) * spacing) // 2
+        start_y = screen_rect.centery - 1 * (h + spacing)
+        for idx, spec in enumerate(specs):
+            row = idx // cols
+            col = idx % cols
+            x = start_x + col * (w + spacing)
+            y = start_y + row * (h + spacing)
+            rect = pygame.Rect(x, y, w, h)
+            self.buttons.append(
+                button_column(
+                    anchor=(x, y),
+                    width=w,
+                    item_height=h,
+                    spacing=0,
+                    specs=[spec],
+                    font=self.font_small,
+                    on_route=self.manager.set_scene,
+                    theme=self.theme,
+                )[0]
+            )
         self.focus = FocusManager()
         items = [
             FocusItem(
@@ -47,10 +60,18 @@ class TitleScene(Scene):
             )
             for b in self.buttons
         ]
-        # clear focus setter resets others
         for b in self.buttons:
             b.set_focus(False)
         self.focus.set_items(items)
+
+    def on_event(self, event) -> None:
+        from pong.events import ResolutionChanged
+        if isinstance(event, ResolutionChanged):
+            return
+
+    def on_enter(self, payload=None):
+        screen_rect = self.manager.app.screen.get_rect() if hasattr(self.manager, "app") else pygame.Rect(0, 0, 1280, 720)
+        self._build_buttons(screen_rect)
 
     def _exit(self) -> None:
         pygame.event.post(pygame.event.Event(pygame.QUIT))

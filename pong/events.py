@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from dataclasses import dataclass
-from typing import Any, Callable, DefaultDict, Generic, TypeVar
+from typing import Any, Callable, DefaultDict, Generic, TypeVar, Optional
 
 
 class GameEvent:
@@ -65,21 +65,86 @@ class BallRemoved(GameEvent):
     ball_id: str
 
 
+@dataclass(frozen=True)
+class KeyAction(GameEvent):
+    key: int
+    action: str  # "down" | "up"
+    mods: int
+
+
+@dataclass(frozen=True)
+class BallBouncePaddle(GameEvent):
+    ball_id: str
+    paddle_id: str
+    hit_pos: float
+    speed: float
+    spin: float
+    vx: float
+    vy: float
+    angle_deg: float
+
+
+@dataclass(frozen=True)
+class BallBounceWall(GameEvent):
+    ball_id: str
+    wall: str  # "top" | "bottom" | "left" | "right"
+    speed: float
+    spin: float
+    vx: float
+    vy: float
+    angle_deg: float
+
+
+@dataclass(frozen=True)
+class SceneChanged(GameEvent):
+    previous: str | None
+    current: str
+
+
+@dataclass(frozen=True)
+class ResolutionChanged(GameEvent):
+    width: int
+    height: int
+    prev_width: int
+    prev_height: int
+
+
 EventType = TypeVar("EventType", bound=GameEvent)
 Listener = Callable[[GameEvent], None]
 
 
 class EventBus(Generic[EventType]):
     def __init__(self) -> None:
-        self._listeners: DefaultDict[type[GameEvent], list[Listener]] = defaultdict(list)
+        self._listeners: DefaultDict[type[GameEvent], list[tuple[Listener, Optional[Callable[[GameEvent], bool]]]]] = defaultdict(list)
         import logging
         self._log = logging.getLogger(__name__)
+        self.log_events = True
 
-    def subscribe(self, event_cls: type[GameEvent], listener: Listener) -> None:
-        self._listeners[event_cls].append(listener)
-        self._log.debug("Event subscribed", extra={"event": event_cls.__name__, "listener": listener.__name__ if hasattr(listener, '__name__') else str(listener)})
+    def subscribe(self, event_cls: type[GameEvent], listener: Listener, predicate: Callable[[GameEvent], bool] | None = None) -> None:
+        self._listeners[event_cls].append((listener, predicate))
+        self._log.debug(
+            "Event subscribed",
+            extra={"event": event_cls.__name__, "listener": getattr(listener, "__name__", str(listener))},
+        )
+
+    def unsubscribe(self, event_cls: type[GameEvent], listener: Listener) -> None:
+        lst = self._listeners.get(event_cls, [])
+        self._listeners[event_cls] = [(l, p) for (l, p) in lst if l != listener]
+
+    def emit(self, event: GameEvent) -> None:
+        self.publish(event)
 
     def publish(self, event: GameEvent) -> None:
-        self._log.debug("Event publish", extra={"event": type(event).__name__})
-        for listener in self._listeners[type(event)]:
-            listener(event)
+        etype = type(event)
+        if self.log_events:
+            payload = {**event.__dict__}
+            self._log.info("Event %s %s", etype.__name__, payload, extra={"event": etype.__name__, "payload": payload})
+        # direct listeners and wildcard (GameEvent)
+        listeners = list(self._listeners.get(etype, [])) + list(self._listeners.get(GameEvent, []))
+        for listener, predicate in listeners:
+            if predicate and not predicate(event):
+                continue
+            try:
+                listener(event)
+            except Exception as exc:  # keep game running
+                self._log.exception("Event handler error", extra={"event": etype.__name__, "listener": str(listener), "error": str(exc)})

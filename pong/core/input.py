@@ -32,6 +32,37 @@ def default_keymap() -> Dict[int, Set[Action]]:
     }
 
 
+def build_keymap_from_actions(action_to_key: Dict[str, int]) -> Dict[int, Set[Action]]:
+    """Builds a key->actions mapping from an action->key config."""
+    keymap: Dict[int, Set[Action]] = {}
+    for name, key in action_to_key.items():
+        try:
+            action = Action[name]
+        except KeyError:
+            continue
+        keymap.setdefault(key, set()).add(action)
+        # mirror menu navigation
+        if action == Action.UP:
+            keymap.setdefault(key, set()).add(Action.MENU_UP)
+        if action == Action.DOWN:
+            keymap.setdefault(key, set()).add(Action.MENU_DOWN)
+    return keymap
+
+
+def serialize_keymap(keymap: Dict[str, int]) -> Dict[str, int]:
+    return keymap
+
+
+def default_action_keys() -> Dict[str, int]:
+    return {
+        "UP": pygame.K_w,
+        "DOWN": pygame.K_s,
+        "CONFIRM": pygame.K_RETURN,
+        "BACK": pygame.K_ESCAPE,
+        "PAUSE": pygame.K_p,
+    }
+
+
 def default_joymap() -> Dict[Tuple[int, int], Set[Action]]:
     """Map (control_type, id) -> actions.
 

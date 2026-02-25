@@ -1,134 +1,20 @@
 {
-  "paddle": [
+  "categories": [
     {
-      "id": "pad_default",
-      "name": "Classic",
-      "sprite": null,
-      "unlocked": true
-    }
-  ],
-  "ball": [
-    {
-      "id": "ball_default",
-      "name": "Plain",
-      "sprite": null,
-      "unlocked": true
+      "id": "ball",
+      "label": "Ball Skins",
+      "default_price": 1000,
+      "items": [
+        {"id": "AI", "name": "AI", "path": "skins/ball/AI.png", "price": 1200, "rarity": "rare"},
+        {"id": "Plasma", "name": "Plasma", "path": "skins/ball/Plasma.png", "price": 1000, "rarity": "epic"},
+        {"id": "Retro-Pong", "name": "Retro Pong", "path": "skins/ball/Retro-Pong.png", "price": 800, "rarity": "common"}
+      ]
     },
     {
-      "id": "ball_AI",
-      "name": "Ai",
-      "sprite": "skins/ball/AI.png",
-      "unlocked": false,
-      "price": 500
-    },
-    {
-      "id": "ball_Plasma",
-      "name": "Plasma",
-      "sprite": "skins/ball/Plasma.png",
-      "unlocked": false,
-      "price": 500
-    },
-    {
-      "id": "ball_Retro-Pong",
-      "name": "Retro-Pong",
-      "sprite": "skins/ball/Retro-Pong.png",
-      "unlocked": true,
-      "price": 500
-    }
-  ],
-  "background": [
-    {
-      "id": "bg_dark",
-      "name": "Dark Grid",
-      "sprite": null,
-      "unlocked": true
-    },
-    {
-      "id": "background_Galaxy",
-      "name": "Galaxy",
-      "sprite": "skins/background/Galaxy.png",
-      "unlocked": false,
-      "price": 500
-    },
-    {
-      "id": "background_Galaxy2",
-      "name": "Galaxy2",
-      "sprite": "skins/background/Galaxy2.png",
-      "unlocked": true,
-      "price": 500
-    },
-    {
-      "id": "background_Hole",
-      "name": "Hole",
-      "sprite": "skins/background/Hole.png",
-      "unlocked": false,
-      "price": 500
-    },
-    {
-      "id": "background_Neon",
-      "name": "Neon",
-      "sprite": "skins/background/Neon.png",
-      "unlocked": false,
-      "price": 500
-    }
-  ],
-  "trail": [
-    {
-      "id": "trail_none",
-      "name": "None",
-      "data": null,
-      "unlocked": true,
-      "price": 0
-    },
-    {
-      "id": "trail_smoke",
-      "name": "Smoke",
-      "data": "smoke",
-      "unlocked": false,
-      "price": 300
-    },
-    {
-      "id": "trail_fire",
-      "name": "Fire",
-      "data": "fire",
-      "unlocked": false,
-      "price": 400
-    },
-    {
-      "id": "trail_neon",
-      "name": "Neon",
-      "data": "neon",
-      "unlocked": false,
-      "price": 450
-    },
-    {
-      "id": "trail_spark",
-      "name": "Spark",
-      "data": "spark",
-      "unlocked": false,
-      "price": 420
-    },
-    {
-      "id": "trail_pixel",
-      "name": "Pixel",
-      "data": "pixel",
-      "unlocked": false,
-      "price": 380
-    },
-    {
-      "id": "trail_rainbow",
-      "name": "Rainbow",
-      "data": "rainbow",
-      "unlocked": true,
-      "price": 480
-    }
-  ],
-  "animation": [
-    {
-      "id": "anim_none",
-      "name": "None",
-      "data": null,
-      "unlocked": true
+      "id": "paddle",
+      "label": "Paddle Skins",
+      "default_price": 1200,
+      "items": []
     }
   ]
 }

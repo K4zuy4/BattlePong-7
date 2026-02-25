@@ -2,9 +2,11 @@ from __future__ import annotations
 
 import pygame
 import logging
+import math
 
 from .base import Scene, SceneManager
 from pong.core.input import Action
+from pong.events import BallBouncePaddle, BallBounceWall
 
 logger = logging.getLogger(__name__)
 
@@ -17,17 +19,23 @@ class PlayScene(Scene):
         self.font = font
         self.font_small = font_small
         self.time = 0.0
-        play_area = manager.app_ctx.get("play_area", (960, 540)) if hasattr(manager, "app_ctx") else (960, 540)
+        play_area = manager.app_ctx.get("play_area", (1280, 720)) if hasattr(manager, "app_ctx") else (1280, 720)
         self.width, self.height = play_area
         pad_w, pad_h = 14, 100
         margin = 32
         self.ball = {
             "x": self.width / 2 - 11,
             "y": self.height / 2 - 11,
-            "vx": 260.0,
-            "vy": 180.0,
+            "vx": 320.0,
+            "vy": 200.0,
             "size": 22,
+            "angle": 0.0,
+            "spin": 120.0,  # deg/sec
         }
+        self.ball_id = "main"
+        self.margin = margin
+        self.pad_w = pad_w
+        self.pad_h = pad_h
         self.paddles = {
             "left": {"x": margin, "y": (self.height - pad_h) / 2, "w": pad_w, "h": pad_h, "speed": 320.0},
             "right": {"x": self.width - margin - pad_w, "y": (self.height - pad_h) / 2, "w": pad_w, "h": pad_h, "speed": 320.0},
@@ -82,7 +90,9 @@ class PlayScene(Scene):
         brect = pygame.Rect(int(b["x"]), int(b["y"]), b["size"], b["size"])
         if ball_img:
             scaled_ball = pygame.transform.smoothscale(ball_img, brect.size)
-            screen.blit(scaled_ball, brect)
+            rotated = pygame.transform.rotate(scaled_ball, b.get("angle", 0.0))
+            rrect = rotated.get_rect(center=brect.center)
+            screen.blit(rotated, rrect)
         else:
             pygame.draw.ellipse(screen, accent, brect)
 
@@ -98,29 +108,119 @@ class PlayScene(Scene):
         b = self.ball
         b["x"] += b["vx"] * dt
         b["y"] += b["vy"] * dt
+        b["angle"] = (b.get("angle", 0.0) + b.get("spin", 0.0) * dt) % 360
         w, h = self.width, self.height
         size = b["size"]
         if b["y"] <= 0:
             b["y"] = 0
             b["vy"] *= -1
+            b["vx"], b["vy"] = _offset_angle(b["vx"], b["vy"], 8.0 if b["vx"] >= 0 else -8.0)
+            b["spin"] *= 0.9
+            ang = math.degrees(math.atan2(b["vy"], b["vx"]))
+            self._emit(
+                BallBounceWall(
+                    ball_id=self.ball_id,
+                    wall="top",
+                    speed=math.hypot(b["vx"], b["vy"]),
+                    spin=b["spin"],
+                    vx=b["vx"],
+                    vy=b["vy"],
+                    angle_deg=ang,
+                )
+            )
         if b["y"] + size >= h:
             b["y"] = h - size
             b["vy"] *= -1
+            b["vx"], b["vy"] = _offset_angle(b["vx"], b["vy"], -8.0 if b["vx"] >= 0 else 8.0)
+            b["spin"] *= 0.9
+            ang = math.degrees(math.atan2(b["vy"], b["vx"]))
+            self._emit(
+                BallBounceWall(
+                    ball_id=self.ball_id,
+                    wall="bottom",
+                    speed=math.hypot(b["vx"], b["vy"]),
+                    spin=b["spin"],
+                    vx=b["vx"],
+                    vy=b["vy"],
+                    angle_deg=ang,
+                )
+            )
         # paddle collisions
         for key in ("left", "right"):
             p = self.paddles[key]
             rect = pygame.Rect(int(p["x"]), int(p["y"]), p["w"], p["h"])
             brect = pygame.Rect(int(b["x"]), int(b["y"]), size, size)
             if rect.colliderect(brect):
-                b["vx"] *= -1
-                # nudge
+                hit_pos = (brect.centery - rect.centery) / (p["h"] / 2)
+                hit_pos = max(-1.0, min(1.0, hit_pos))
+                speed = max(320.0, (abs(b["vx"]) + abs(b["vy"])) * 0.55)
+                dir_x = 1 if key == "left" else -1
+                new_vx = dir_x * speed
+                new_vy = hit_pos * speed * 0.75
+                # keep total speed consistent
+                mag = (new_vx ** 2 + new_vy ** 2) ** 0.5
+                target = max(340.0, mag)
+                new_vx = new_vx / mag * target
+                new_vy = new_vy / mag * target
+                # apply fixed deflection so bounce isn't perfectly mirrored
+                deflect = 10.0
+                if hit_pos < 0:
+                    deflect = -deflect
+                b["vx"], b["vy"] = _offset_angle(new_vx, new_vy, deflect)
+                b["spin"] = hit_pos * 720.0
+                # nudge out of paddle to avoid sticking
                 if key == "left":
                     b["x"] = p["x"] + p["w"]
                 else:
                     b["x"] = p["x"] - size
+                angle_deg = math.degrees(math.atan2(b["vy"], b["vx"]))
+                self._emit(
+                    BallBouncePaddle(
+                        ball_id=self.ball_id,
+                        paddle_id=key,
+                        hit_pos=hit_pos,
+                        speed=target,
+                        spin=b["spin"],
+                        vx=b["vx"],
+                        vy=b["vy"],
+                        angle_deg=angle_deg,
+                    )
+                )
         # walls left/right -> bounce
-        if b["x"] <= 0 or b["x"] + size >= w:
-            b["vx"] *= -1
+        if b["x"] <= 0:
+            b["x"] = 0
+            b["vx"] = abs(b["vx"])
+            b["vx"], b["vy"] = _offset_angle(b["vx"], b["vy"], 6.0 if b["vy"] >= 0 else -6.0)
+            b["spin"] *= 0.8
+            ang = math.degrees(math.atan2(b["vy"], b["vx"]))
+            self._emit(
+                BallBounceWall(
+                    ball_id=self.ball_id,
+                    wall="left",
+                    speed=math.hypot(b["vx"], b["vy"]),
+                    spin=b["spin"],
+                    vx=b["vx"],
+                    vy=b["vy"],
+                    angle_deg=ang,
+                )
+            )
+        elif b["x"] + size >= w:
+            b["x"] = w - size
+            b["vx"] = -abs(b["vx"])
+            b["vx"], b["vy"] = _offset_angle(b["vx"], b["vy"], -6.0 if b["vy"] >= 0 else 6.0)
+            b["spin"] *= 0.8
+            ang = math.degrees(math.atan2(b["vy"], b["vx"]))
+            self._emit(
+                BallBounceWall(
+                    ball_id=self.ball_id,
+                    wall="right",
+                    speed=math.hypot(b["vx"], b["vy"]),
+                    spin=b["spin"],
+                    vx=b["vx"],
+                    vy=b["vy"],
+                    angle_deg=ang,
+                )
+            )
 
     def _update_paddles(self, dt: float) -> None:
         # simple follow ball AI for right; left player via keyboard
@@ -143,9 +243,29 @@ class PlayScene(Scene):
             elif self.paddles["right"]["y"] > target:
                 self.paddles["right"]["y"] -= self.paddles["right"]["speed"] * dt
 
+    def on_event(self, event) -> None:
+        from pong.events import ResolutionChanged
+        if isinstance(event, ResolutionChanged):
+            return  # resolution fixed; ignore
+
+    def _emit(self, event) -> None:
+        app = getattr(self.manager, "app", None)
+        if app and hasattr(app, "bus"):
+            app.bus.publish(event)
+
 
 def _hex_to_rgb(hexstr: str) -> tuple[int, int, int]:
     hs = hexstr.lstrip("#")
     if len(hs) == 3:
         hs = "".join([c * 2 for c in hs])
     return tuple(int(hs[i : i + 2], 16) for i in (0, 2, 4))
+
+
+def _offset_angle(vx: float, vy: float, deg: float) -> tuple[float, float]:
+    """Rotate velocity vector by deg while preserving speed."""
+    speed = math.hypot(vx, vy)
+    if speed == 0:
+        return vx, vy
+    ang = math.atan2(vy, vx)
+    ang += math.radians(deg)
+    return math.cos(ang) * speed, math.sin(ang) * speed
