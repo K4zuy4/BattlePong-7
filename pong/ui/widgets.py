@@ -40,19 +40,19 @@ def _lerp_color(c1: tuple[int, int, int], c2: tuple[int, int, int], t: float) ->
 DEFAULT_THEME = ThemeTokens(
     variants={
         "primary": ButtonStyle(
-            base=(64, 78, 120),
-            hover=(90, 112, 168),
-            press=(52, 62, 96),
-            border=(220, 230, 255),
-            text=(255, 255, 255),
+            base=(28, 32, 44),
+            hover=(74, 110, 188),
+            press=(20, 22, 30),
+            border=(240, 240, 255),
+            text=(250, 250, 255),
             radius=12,
         ),
         "ghost": ButtonStyle(
-            base=(28, 32, 44),
-            hover=(40, 46, 64),
-            press=(22, 26, 36),
-            border=(140, 160, 200),
-            text=(220, 230, 255),
+            base=(16, 18, 24),
+            hover=(44, 54, 76),
+            press=(10, 12, 16),
+            border=(170, 190, 220),
+            text=(220, 230, 245),
             radius=12,
         ),
     }
@@ -110,7 +110,7 @@ class Button:
         col_hover = _lerp_color(style.base, style.hover, self._hover_t)
         col_press = _lerp_color(col_hover, style.press, self._press_t)
         pygame.draw.rect(screen, col_press, self.rect, border_radius=style.radius)
-        border_w = 3 if self.focused else 2
+        border_w = 4 if self.focused else 2
         pygame.draw.rect(screen, style.border, self.rect, width=border_w, border_radius=style.radius)
         text = self.font.render(self.label, True, style.text)
         text_rect = text.get_rect(center=self.rect.center)

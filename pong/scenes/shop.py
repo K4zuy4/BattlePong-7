@@ -71,7 +71,7 @@ class ShopScene(Scene):
         credits = self.manager.app_ctx.get("credits", 0)
         credits_txt = self.font_small.render(f"Credits: {credits}", True, fg)
         screen.blit(credits_txt, (40, 100))
-        subtitle = self.font_small.render("Kaufe Credits (es kostet nichts wirklich)", True, fg)
+        subtitle = self.font_small.render("Kaufe mehr Credits", True, fg)
         screen.blit(subtitle, (40, 140))
         if self.status_msg:
             msg = self.font_small.render(self.status_msg, True, (255, 210, 180))

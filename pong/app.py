@@ -251,19 +251,19 @@ class GameApp:
         return ThemeTokens(
             variants={
                 "primary": ButtonStyle(
-                    base=(64, 78, 120),
-                    hover=(90, 112, 168),
-                    press=(52, 62, 96),
-                    border=(220, 230, 255),
-                    text=(255, 255, 255),
+                    base=(28, 32, 44),
+                    hover=(74, 110, 188),
+                    press=(20, 22, 30),
+                    border=(240, 240, 255),
+                    text=(250, 250, 255),
                     radius=12,
                 ),
                 "ghost": ButtonStyle(
-                    base=(28, 32, 44),
-                    hover=(40, 46, 64),
-                    press=(22, 26, 36),
-                    border=(140, 160, 200),
-                    text=(220, 230, 255),
+                    base=(16, 18, 24),
+                    hover=(44, 54, 76),
+                    press=(10, 12, 16),
+                    border=(170, 190, 220),
+                    text=(220, 230, 245),
                     radius=12,
                 ),
             }
