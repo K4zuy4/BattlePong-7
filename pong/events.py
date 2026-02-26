@@ -22,7 +22,9 @@ class BallHitPaddle(GameEvent):
 
 @dataclass(frozen=True)
 class PointScored(GameEvent):
-    scorer_id: str
+    scorer_id: str  # "left" or "right"
+    left_score: int
+    right_score: int
 
 
 @dataclass(frozen=True)

@@ -4,9 +4,12 @@ import pygame
 import logging
 import math
 
-from .base import Scene, SceneManager
+try:
+    from .base import Scene, SceneManager
+except ImportError:  # fallback when run as script
+    from pong.scenes.base import Scene, SceneManager
 from pong.core.input import Action
-from pong.events import BallBouncePaddle, BallBounceWall
+from pong.events import BallBouncePaddle, BallBounceWall, PointScored, RoundReset
 
 logger = logging.getLogger(__name__)
 
@@ -40,6 +43,13 @@ class PlayScene(Scene):
             "left": {"x": margin, "y": (self.height - pad_h) / 2, "w": pad_w, "h": pad_h, "speed": 320.0},
             "right": {"x": self.width - margin - pad_w, "y": (self.height - pad_h) / 2, "w": pad_w, "h": pad_h, "speed": 320.0},
         }
+        self.left_score = 0
+        self.right_score = 0
+
+    def on_enter(self, payload=None) -> None:
+        self.left_score = 0
+        self.right_score = 0
+        self._center_ball(direction=1)
 
     # Event handling ----------------------------------------------------- #
     def handle_event(self, event: pygame.event.Event) -> None:
@@ -99,10 +109,13 @@ class PlayScene(Scene):
     def _draw_ui(self, screen: pygame.Surface) -> None:
         palette = self.manager.app_ctx.get("palette") if hasattr(self.manager, "app_ctx") else None
         fg = (240, 220, 180) if not palette else _hex_to_rgb(palette.foreground)
-        title = self.font.render("Play Stub", True, fg)
-        screen.blit(title, (40, 40))
-        hint = self.font_small.render("[Esc/P] Pause", True, fg)
-        screen.blit(hint, (40, 90))
+        accent = (120, 180, 255) if not palette else _hex_to_rgb(palette.accent)
+        # scores centered
+        score_txt = f"{self.left_score}   |   {self.right_score}"
+        score = self.font.render(score_txt, True, fg)
+        screen.blit(score, (screen.get_width() // 2 - score.get_width() // 2, 26))
+        hint = self.font_small.render("[Esc/P] Pause", True, accent)
+        screen.blit(hint, (40, 30))
 
     def _update_ball(self, dt: float) -> None:
         b = self.ball
@@ -186,41 +199,13 @@ class PlayScene(Scene):
                         angle_deg=angle_deg,
                     )
                 )
-        # walls left/right -> bounce
-        if b["x"] <= 0:
-            b["x"] = 0
-            b["vx"] = abs(b["vx"])
-            b["vx"], b["vy"] = _offset_angle(b["vx"], b["vy"], 6.0 if b["vy"] >= 0 else -6.0)
-            b["spin"] *= 0.8
-            ang = math.degrees(math.atan2(b["vy"], b["vx"]))
-            self._emit(
-                BallBounceWall(
-                    ball_id=self.ball_id,
-                    wall="left",
-                    speed=math.hypot(b["vx"], b["vy"]),
-                    spin=b["spin"],
-                    vx=b["vx"],
-                    vy=b["vy"],
-                    angle_deg=ang,
-                )
-            )
-        elif b["x"] + size >= w:
-            b["x"] = w - size
-            b["vx"] = -abs(b["vx"])
-            b["vx"], b["vy"] = _offset_angle(b["vx"], b["vy"], -6.0 if b["vy"] >= 0 else 6.0)
-            b["spin"] *= 0.8
-            ang = math.degrees(math.atan2(b["vy"], b["vx"]))
-            self._emit(
-                BallBounceWall(
-                    ball_id=self.ball_id,
-                    wall="right",
-                    speed=math.hypot(b["vx"], b["vy"]),
-                    spin=b["spin"],
-                    vx=b["vx"],
-                    vy=b["vy"],
-                    angle_deg=ang,
-                )
-            )
+        # out of bounds -> score
+        if b["x"] + size < 0:
+            self._score_point("right")
+            return
+        if b["x"] > w:
+            self._score_point("left")
+            return
 
     def _update_paddles(self, dt: float) -> None:
         # simple follow ball AI for right; left player via keyboard
@@ -252,6 +237,33 @@ class PlayScene(Scene):
         app = getattr(self.manager, "app", None)
         if app and hasattr(app, "bus"):
             app.bus.publish(event)
+
+    def _center_ball(self, direction: int = 1) -> None:
+        """Place ball in center; direction 1 -> to right, -1 -> to left."""
+        self.ball["x"] = self.width / 2 - self.ball["size"] / 2
+        self.ball["y"] = self.height / 2 - self.ball["size"] / 2
+        speed = 320.0
+        self.ball["vx"] = speed * direction
+        self.ball["vy"] = 120.0 * (-1 if direction < 0 else 1)
+        self.ball["spin"] = 80.0 * direction
+        self.ball["angle"] = 0.0
+
+    def _score_point(self, scorer: str) -> None:
+        if scorer == "left":
+            self.left_score += 1
+            direction = -1
+        else:
+            self.right_score += 1
+            direction = 1
+        self._emit(
+            PointScored(
+                scorer_id=scorer,
+                left_score=self.left_score,
+                right_score=self.right_score,
+            )
+        )
+        self._center_ball(direction=direction)
+        self._emit(RoundReset())
 
 
 def _hex_to_rgb(hexstr: str) -> tuple[int, int, int]:

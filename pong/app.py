@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 import pygame
 
-from pong.events import EventBus, GameEvent, KeyAction, ResolutionChanged
+from pong.events import EventBus, GameEvent, KeyAction
 from pong.scenes import SceneManager, TitleScene, SettingsScene, PlayScene, PauseScene, ShopScene, InventoryScene
 from pong.scenes.transitions import TransitionController, TransitionSpec
 from pong.settings import RuntimeSettings
