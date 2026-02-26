@@ -177,7 +177,6 @@ class PlayScene(Scene):
         b = self.ball
         b["x"] += b["vx"] * dt
         b["y"] += b["vy"] * dt
-        b["angle"] = (b.get("angle", 0.0) + b.get("spin", 0.0) * dt) % 360
         w, h = self.width, self.height
         size = b["size"]
         top = self.play_top
@@ -187,6 +186,7 @@ class PlayScene(Scene):
             b["vy"] *= -1
             b["vx"], b["vy"] = _offset_angle(b["vx"], b["vy"], 8.0 if b["vx"] >= 0 else -8.0)
             b["spin"] *= 0.9
+            b["spin"] *= -1  # flip spin on vertical wall bounce
             ang = math.degrees(math.atan2(b["vy"], b["vx"]))
             self._emit(
                 BallBounceWall(
@@ -204,6 +204,7 @@ class PlayScene(Scene):
             b["vy"] *= -1
             b["vx"], b["vy"] = _offset_angle(b["vx"], b["vy"], -8.0 if b["vx"] >= 0 else 8.0)
             b["spin"] *= 0.9
+            b["spin"] *= -1  # flip spin on vertical wall bounce
             ang = math.degrees(math.atan2(b["vy"], b["vx"]))
             self._emit(
                 BallBounceWall(
@@ -273,6 +274,9 @@ class PlayScene(Scene):
         if b["x"] > w:
             self._score_point("left")
             return
+        # orient spin to flight direction
+        self._orient_spin(dt)
+        b["angle"] = (b.get("angle", 0.0) + b.get("spin", 0.0) * dt) % 360
 
     def _update_paddles(self, dt: float) -> None:
         # simple follow ball AI for right; left player via keyboard
@@ -358,6 +362,26 @@ class PlayScene(Scene):
             elif boosts and boosts.registry:
                 self.equipped_boost_id = next(iter(boosts.registry.keys()))
                 boosts.activate(self.equipped_boost_id)
+
+    def _orient_spin(self, dt: float) -> None:
+        """Smoothly steer spin toward direction-derived target with damping."""
+        b = self.ball
+        vx, vy = b.get("vx", 0.0), b.get("vy", 0.0)
+        speed = math.hypot(vx, vy)
+        if speed < 1e-3:
+            return
+        # base: clockwise when moving right, counter-clockwise when moving left
+        sign_dir = -1 if vx > 0 else 1
+        target = sign_dir * speed * 0.4  # k factor
+        # add paddle-induced bias captured via current spin magnitude
+        # smoothly approach target
+        spin = b.get("spin", 0.0)
+        spin += (target - spin) * min(1.0, dt * 6.0)
+        # damping
+        spin *= 0.995
+        # clamp
+        spin = max(-720.0, min(720.0, spin))
+        b["spin"] = spin
 
 
 def _hex_to_rgb(hexstr: str) -> tuple[int, int, int]:
