@@ -17,6 +17,7 @@ class Action(Enum):
     PAUSE = auto()
     MENU_UP = auto()
     MENU_DOWN = auto()
+    BOOST = auto()
 
 
 def default_keymap() -> Dict[int, Set[Action]]:
@@ -29,6 +30,7 @@ def default_keymap() -> Dict[int, Set[Action]]:
         pygame.K_SPACE: {Action.CONFIRM},
         pygame.K_ESCAPE: {Action.BACK, Action.PAUSE},
         pygame.K_p: {Action.PAUSE},
+        pygame.K_LSHIFT: {Action.CONFIRM},  # keep for menus
     }
 
 
@@ -49,8 +51,8 @@ def build_keymap_from_actions(action_to_key: Dict[str, int]) -> Dict[int, Set[Ac
     return keymap
 
 
-def serialize_keymap(keymap: Dict[str, int]) -> Dict[str, int]:
-    return keymap
+    def serialize_keymap(keymap: Dict[str, int]) -> Dict[str, int]:
+        return keymap
 
 
 def default_action_keys() -> Dict[str, int]:
@@ -60,6 +62,7 @@ def default_action_keys() -> Dict[str, int]:
         "CONFIRM": pygame.K_RETURN,
         "BACK": pygame.K_ESCAPE,
         "PAUSE": pygame.K_p,
+        "BOOST": pygame.K_SPACE,
     }
 
 
