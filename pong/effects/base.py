@@ -42,3 +42,7 @@ class EffectBase:
 
     def on_activate(self, ctx: EffectContext) -> None:
         return
+
+    def reset_state(self, ctx: EffectContext) -> None:
+        """Reset runtime-only effect state before a new match starts."""
+        return

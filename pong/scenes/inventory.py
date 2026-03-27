@@ -115,14 +115,18 @@ class InventoryScene(Scene):
         if cat:
             for itm in cat.get("items", []):
                 path = itm.get("path")
-                if not path:
+                item_id = itm.get("id") or (Path(path).stem if path else None)
+                if not item_id:
                     continue
                 items.append({
-                    "id": itm.get("id", Path(path).stem),
-                    "name": itm.get("name", Path(path).stem.replace("_", " ").title()),
+                    "id": item_id,
+                    "name": itm.get("name", Path(path).stem.replace("_", " ").title() if path else str(item_id).replace("_", " ").title()),
                     "path": path,
                     "price": itm.get("price", default_price),
                     "rarity": itm.get("rarity", "common"),
+                    "description": itm.get("description", ""),
+                    "cooldown": itm.get("cooldown", 0.0),
+                    "duration": itm.get("duration", 0.0),
                 })
         if items:
             return items
@@ -170,9 +174,14 @@ class InventoryScene(Scene):
         title = self.font.render("Inventory", True, (230, 230, 230))
         screen.blit(title, (40, 30))
         if self.categories:
-            cat_label = self.categories[self.selected_cat_idx].get("label", "")
+            current_cat = self.categories[self.selected_cat_idx]
+            cat_label = current_cat.get("label", "")
             cat_txt = self.font_small.render(cat_label, True, (200, 220, 240))
             screen.blit(cat_txt, (40, 110))
+            if current_cat.get("id") == "ability":
+                equipped_name = self.manager.app_ctx.get("equipped_ability_name", "None") if hasattr(self.manager, "app_ctx") else "None"
+                equipped_txt = self.font_small.render(f"Equipped: {equipped_name}", True, (255, 220, 160))
+                screen.blit(equipped_txt, (240, 110))
         for b in self.buttons:
             b.draw(screen)
         for tile in self.items_grid:
@@ -194,19 +203,32 @@ class InventoryScene(Scene):
         if not app:
             return
         if item_id not in owned:
-            if app.credits < price:
-                self.status_msg = f"Need {price - app.credits} more credits"
-                return
-            app.credits -= price
-            app.owned_items.setdefault(cat_id, set()).add(item_id)
-            app._save_wallet()
-            app._save_owned_items()
-            self.manager.app_ctx["credits"] = app.credits
-            self.manager.app_ctx["owned_items"] = app.owned_items
-            self.status_msg = f"Unlocked {item.get('name','')} for {price}C"
-            logger.info("Inventory purchase", extra={"category": cat_id, "item": item_id, "price": price, "credits_after": app.credits})
+            if price <= 0:
+                app.owned_items.setdefault(cat_id, set()).add(item_id)
+                app._save_owned_items()
+                self.manager.app_ctx["owned_items"] = app.owned_items
+                self.status_msg = f"Unlocked {item.get('name','')}"
+            else:
+                if app.credits < price:
+                    self.status_msg = f"Need {price - app.credits} more credits"
+                    return
+                app.credits -= price
+                app.owned_items.setdefault(cat_id, set()).add(item_id)
+                app._save_wallet()
+                app._save_owned_items()
+                self.manager.app_ctx["credits"] = app.credits
+                self.manager.app_ctx["owned_items"] = app.owned_items
+                self.status_msg = f"Unlocked {item.get('name','')} for {price}C"
+                logger.info("Inventory purchase", extra={"category": cat_id, "item": item_id, "price": price, "credits_after": app.credits})
         else:
             self.status_msg = f"Selected {item.get('name','')}"
+        if cat_id == "ability":
+            desc = item.get("description", "")
+            cooldown = float(item.get("cooldown", 0.0) or 0.0)
+            duration = float(item.get("duration", 0.0) or 0.0)
+            self.status_msg = f"{item.get('name','')} | CD {cooldown:.1f}s | Duration {duration:.1f}s"
+            if desc:
+                self.status_msg = f"{self.status_msg} | {desc}"
         self.selected_item_id = item_id
         # refresh grid to clear lock overlay
         self._build_items()
@@ -242,6 +264,11 @@ class InventoryScene(Scene):
                 idx = 0
             app._apply_paddle_skin(idx)
             self.status_msg = f"Applied {item.get('name','')}"
+        elif cat_id == "ability":
+            if app.set_equipped_ability(item.get("id")):
+                self.status_msg = f"Equipped {item.get('name','')}"
+                self.manager.app_ctx["equipped_ability_id"] = item.get("id")
+                self.manager.app_ctx["equipped_ability_name"] = item.get("name")
 
     def _back(self) -> None:
         if self.manager.previous_name:

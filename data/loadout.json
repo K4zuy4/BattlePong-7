@@ -1,4 +1,5 @@
 {
+  "ability": "speed_boost",
   "paddle": "pad_default",
   "ball": "ball_Retro-Pong",
   "background": "background_Galaxy2",

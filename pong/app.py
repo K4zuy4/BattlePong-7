@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 import pygame
 
+from pong.abilities import ABILITY_SPECS, DEFAULT_ABILITY_ID, ability_inventory_items
 from pong.events import EventBus, GameEvent, KeyAction
 from pong.scenes import SceneManager, TitleScene, SettingsScene, PlayScene, PauseScene, ShopScene, InventoryScene
 from pong.scenes.transitions import TransitionController, TransitionSpec
@@ -59,12 +60,15 @@ class GameApp:
         # economy state
         self.credits = 0
         self.owned_items: dict[str, set[str]] = {}
+        self.ability_specs = ABILITY_SPECS
+        self.loadout: dict[str, str] = {}
 
         self.skins = SkinRegistry(Path("skins"))
         self._skin_names = self.skins.list()
         self._skin_index = 0
         self._load_wallet()
         self._load_owned_items()
+        self._load_loadout()
         self.inventory = self._load_inventory()
         self.ball_skins = self._load_ball_skins()
         self.ball_skin_index = 0
@@ -99,6 +103,12 @@ class GameApp:
             "paddle_skin_name": None,
             "paddle_image": None,
             "inventory": self.inventory,
+            "ability_specs": self.ability_specs,
+            "loadout": self.loadout,
+            "equipped_ability_id": self.loadout.get("ability"),
+            "equipped_ability_name": self._ability_name(self.loadout.get("ability")),
+            "ability_cooldown_remaining": 0.0,
+            "ability_active_remaining": 0.0,
         }
         self.log.info("Applying initial skin...")
         if self._skin_names:
@@ -253,6 +263,9 @@ class GameApp:
                 self.paddle_skins[self.paddle_skin_index] if self.paddle_skins else None
             )
             self.manager.app_ctx["inventory"] = self.inventory
+            self.manager.app_ctx["loadout"] = self.loadout
+            self.manager.app_ctx["equipped_ability_id"] = self.loadout.get("ability")
+            self.manager.app_ctx["equipped_ability_name"] = self._ability_name(self.loadout.get("ability"))
 
             # Fixed-step updates
             while self.clock.step_ready():
@@ -278,6 +291,7 @@ class GameApp:
             f"skin: {self.skins.active if self.skins.active else 'none'}",
             f"in_game: {self.in_game}",
             f"credits: {self.credits}",
+            f"ability: {self._ability_name(self.loadout.get('ability'))}",
         ]
 
     def _apply_skin(self, name: str) -> None:
@@ -307,17 +321,47 @@ class GameApp:
         save_json("data/wallet.json", {"credits": self.credits})
 
     def _load_owned_items(self) -> None:
-        data = load_json("data/owned_items.json", {"ball": [], "paddle": []})
+        data = load_json(
+            "data/owned_items.json",
+            {"ball": [], "paddle": [], "ability": list(self._default_owned_items()["ability"])},
+        )
         owned: dict[str, set[str]] = {}
         for cat, lst in data.items():
             if isinstance(lst, list):
                 owned[cat] = set(map(str, lst))
+        for cat, defaults in self._default_owned_items().items():
+            owned.setdefault(cat, set()).update(defaults)
         self.owned_items = owned
         if hasattr(self, "manager") and hasattr(self.manager, "app_ctx"):
             self.manager.app_ctx["owned_items"] = self.owned_items
 
     def _save_owned_items(self) -> None:
         save_json("data/owned_items.json", {k: list(v) for k, v in self.owned_items.items()})
+
+    def _load_loadout(self) -> None:
+        data = load_json("data/loadout.json", {})
+        if not isinstance(data, dict):
+            data = {}
+        loadout = {k: str(v) for k, v in data.items() if v is not None}
+        ability_id = loadout.get("ability", DEFAULT_ABILITY_ID)
+        if ability_id not in self.ability_specs:
+            ability_id = DEFAULT_ABILITY_ID
+        loadout["ability"] = ability_id
+        self.loadout = loadout
+
+    def _save_loadout(self) -> None:
+        save_json("data/loadout.json", self.loadout)
+
+    def set_equipped_ability(self, ability_id: str) -> bool:
+        if ability_id not in self.ability_specs:
+            return False
+        self.loadout["ability"] = ability_id
+        self._save_loadout()
+        if hasattr(self, "manager") and hasattr(self.manager, "app_ctx"):
+            self.manager.app_ctx["loadout"] = self.loadout
+            self.manager.app_ctx["equipped_ability_id"] = ability_id
+            self.manager.app_ctx["equipped_ability_name"] = self._ability_name(ability_id)
+        return True
 
     def _load_inventory(self) -> dict:
         data = load_json("data/inventory.json", {"categories": []})
@@ -331,19 +375,32 @@ class GameApp:
             raw_items = c.get("items", []) if isinstance(c, dict) else []
             for itm in raw_items:
                 path = itm.get("path")
-                if not path:
+                item_id = itm.get("id") or (Path(path).stem if path else None)
+                if not item_id:
                     continue
                 items.append(
                     {
-                        "id": itm.get("id") or Path(path).stem,
-                        "name": itm.get("name") or Path(path).stem.replace("_", " ").title(),
+                        "id": item_id,
+                        "name": itm.get("name") or (Path(path).stem.replace("_", " ").title() if path else str(item_id).replace("_", " ").title()),
                         "path": path,
                         "price": int(itm.get("price", price)),
                         "rarity": itm.get("rarity", "common"),
+                        "description": itm.get("description", ""),
+                        "cooldown": float(itm.get("cooldown", 0.0)),
+                        "duration": float(itm.get("duration", 0.0)),
                     }
                 )
             if cid:
                 categories.append({"id": cid, "label": label, "default_price": price, "items": items})
+        categories = [c for c in categories if c.get("id") != "ability"]
+        categories.append(
+            {
+                "id": "ability",
+                "label": "Abilities",
+                "default_price": 0,
+                "items": ability_inventory_items(),
+            }
+        )
         self.log.info(
             "Inventory categories loaded",
             extra={
@@ -352,6 +409,17 @@ class GameApp:
             },
         )
         return {"categories": categories}
+
+    def _default_owned_items(self) -> dict[str, set[str]]:
+        return {
+            "ability": set(self.ability_specs.keys()),
+        }
+
+    def _ability_name(self, ability_id: str | None) -> str:
+        if not ability_id:
+            return "None"
+        spec = self.ability_specs.get(ability_id)
+        return spec.name if spec else ability_id
 
     # ball skins -------------------------------------------------------- #
     def _load_ball_skins(self) -> list[str]:

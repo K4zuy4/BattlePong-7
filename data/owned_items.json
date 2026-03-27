@@ -4,5 +4,10 @@
     "Plasma",
     "Retro-Pong"
   ],
-  "paddle": []
+  "paddle": [],
+  "ability": [
+    "goal_shield",
+    "paddle_dash",
+    "speed_boost"
+  ]
 }
