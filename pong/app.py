@@ -37,6 +37,7 @@ class GameApp:
 
         # load persisted input config
         self.input_cfg = load_json("data/input_bindings.json", {})
+        self.settings_cfg = load_json("data/settings.json", {})
 
         self.disp = self.settings.display
         # bump default window a bit larger
@@ -125,7 +126,9 @@ class GameApp:
         self.log.info("GameApp initialized; starting at 'title'")
 
         self.input = InputState(keymap=self._build_keymap())
-        self.debug_overlay = DebugOverlay(DebugOverlayConfig())
+        self.debug_overlay = DebugOverlay(
+            DebugOverlayConfig(show=bool(self.settings_cfg.get("debug_overlay", False)))
+        )
         self.debug_overlay.set_provider(self._debug_lines)
 
 
@@ -182,6 +185,22 @@ class GameApp:
 
     def save_display_cfg(self) -> None:
         pass
+
+    def set_debug_overlay_visible(self, visible: bool) -> None:
+        show = bool(visible)
+        if hasattr(self, "debug_overlay"):
+            self.debug_overlay.config.show = show
+        if not isinstance(self.settings_cfg, dict):
+            self.settings_cfg = {}
+        self.settings_cfg["debug_overlay"] = show
+        save_json("data/settings.json", self.settings_cfg)
+
+    def debug_overlay_visible(self) -> bool:
+        if hasattr(self, "debug_overlay"):
+            return bool(self.debug_overlay.config.show)
+        if isinstance(self.settings_cfg, dict):
+            return bool(self.settings_cfg.get("debug_overlay", False))
+        return False
 
     def run(self) -> None:
         self.log.info("Entering main loop")

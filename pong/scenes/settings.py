@@ -39,6 +39,7 @@ class SettingsScene(Scene):
         if not app:
             self.action_keys = default_action_keys()
             self.res_index = 0
+            self.debug_overlay_enabled = False
             return
         cfg = app.input_cfg if isinstance(app.input_cfg, dict) else {}
         keys = default_action_keys()
@@ -49,6 +50,7 @@ class SettingsScene(Scene):
                 pass
         self.action_keys = keys
         self.res_index = 0
+        self.debug_overlay_enabled = app.debug_overlay_visible()
 
     def _build_binding_buttons(self):
         self.binding_buttons = []
@@ -68,6 +70,10 @@ class SettingsScene(Scene):
         spacing = 12
         anchor = (60, 420)
         specs = [
+            ButtonSpec(
+                f"Debug Overlay: {'On' if self.debug_overlay_enabled else 'Off'}",
+                action=self._toggle_debug_overlay,
+            ),
             ButtonSpec("Back", action=self._back, variant="ghost"),
         ]
         self.buttons = button_column(
@@ -100,6 +106,15 @@ class SettingsScene(Scene):
             else:
                 self.manager.set_scene("title")
         logger.info("Settings back", extra={"in_game": in_game})
+
+    def _toggle_debug_overlay(self) -> None:
+        app = getattr(self.manager, "app", None)
+        if not app:
+            return
+        app.set_debug_overlay_visible(not app.debug_overlay_visible())
+        self.debug_overlay_enabled = app.debug_overlay_visible()
+        self.status = f"Debug overlay {'enabled' if self.debug_overlay_enabled else 'disabled'}"
+        self._build_misc_buttons()
 
     # event/input ------------------------------------------------------- #
     def handle_event(self, event: pygame.event.Event) -> None:
