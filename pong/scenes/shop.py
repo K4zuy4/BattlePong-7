@@ -18,8 +18,8 @@ class ShopScene(Scene):
         self.theme = theme
         self.status_msg = ""
         self.packages = [
-            {"label": "Buy 1000C for 9.999€ (Satire)", "credits": 1000},
-            {"label": "Buy 5000C for 49.999€ (Satire)", "credits": 5000},
+            {"label": "Buy 1000C for 9.999€", "credits": 1000},
+            {"label": "Buy 5000C for 49.999€", "credits": 5000},
         ]
         specs = [
             ButtonSpec("1000C Pack", action=lambda: self._buy_pack(0)),
